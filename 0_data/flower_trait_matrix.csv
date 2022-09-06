@@ -1,4 +1,4 @@
-species,barcode,collector_number,hypathium_height_mm,hypathium_openning,petal_length_mm,petal_width_mm,major_filet_height,major_filet_width,major_anther_height,major_anther_width,minor_filet_height,minor_filet_width,minor_anther_height,minor_anther_width,style_height,stigma_width,pore_long_section,pore_trans_section,pore_area
+species,barcode,collector_number,hypathium_height,hypathium_openning,petal_length_mm,petal_width_mm,major_filet_height,major_filet_width,major_anther_height,major_anther_width,minor_filet_height,minor_filet_width,minor_anther_height,minor_anther_width,style_height,stigma_width,pore_long_section,pore_trans_section,pore_area
 albicans,upcb0015799,Haas_106,2.82,3.2,NA,NA,2.52,0.17,3.4,0.46,1.31,0.17,2.93,0.47,4.4,1.02,0.17,0.14,0.0187
 albicans,upcb0042394,Faria_26,2.23,2.97,NA,NA,1.54,0.14,2.56,0.48,1.17,0.09,2.12,0.47,2.12,1,0.22,0.2,0.0345
 albicans,upcb0015808,Gatti_37,3.19,3.03,NA,NA,3.42,0.16,2.91,0.62,2.41,0.18,2.04,0.5,2.65,0.72,0.26,0.12,0.0245
