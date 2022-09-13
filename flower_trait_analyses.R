@@ -11,25 +11,10 @@ library(plyr)
 library(RColorBrewer)
 library(reshape2)
 
-### loading all flower traits
-ftraits = read.table("0_data/flower_trait_matrix.csv", sep=",", h=T)
-
 ### loading occurrence count per domain
 spp_count_domain = read.table("0_data/spp_count_domain.csv", h=T, sep=",")
 
-### selfing-diagnostic traits
-# flower size
-flower_size = ftraits$hypathium_openning
-# herkogamy
-major_stamen_height = ftraits$major_filet_height + ftraits$major_anther_height
-minor_stamen_height = ftraits$minor_filet_height + ftraits$minor_anther_height
-herkogamy_major = ftraits$style_height - major_stamen_height
-herkogamy_minor = ftraits$style_height - minor_stamen_height
-# stigma e pore size
-stigma_size = ftraits$stigma_width
-pore_size = ftraits$pore_long_section
-
-### define geopraphic states 
+## define geopraphic states 
 high_ths = 0.90
 low_ths = (1 - high_ths)
 geo_states = af_percentage = spp_count_domain$AF/ apply(spp_count_domain[,-1], MARGIN = 1, FUN=sum)
@@ -38,63 +23,53 @@ geo_states[af_percentage <= low_ths] = "other"
 geo_states[af_percentage > low_ths & af_percentage < high_ths] = "AFother"
 names(geo_states) = spp_count_domain$species
 
+### loading all flower traits
+ftraits = read.table("0_data/flower_trait_matrix.csv", sep=",", h=T)
+summary(ftraits)
 
-### flower dataframe
-flower_df = data.frame(flower_size, herkogamy_minor, stigma_size, pore_size)
+## selfing-diagnostic traits
+# flower size
+flower_size = ftraits$hypathium_height
+# herkogamy
+minor_stamen_height = ftraits$minor_filet_height + ftraits$minor_anther_height
+herkogamy = ftraits$style_height - minor_stamen_height
+# pollen receipt & deposition
+style_height = ftraits$style_height
+stigma_size = ftraits$stigma_width
+pore_size = ftraits$pore_long_section
+# flower dataframe
+flower_df = data.frame(flower_size, herkogamy, style_height, stigma_size, pore_size)
 
+### sourcing other functions
+source("function_pca_evaluation.R")
 
-################################# PCA analyses #################################
+############################## flower differences by geographic state ###################
 
-data_df = flower_df
-
-### observed patterns 
-pca = prcomp(data_df, center = F)
+### Trait correlation analyses 
+pca_evaluation(df= flower_df, iter=99, dir= paste(getwd(), "1_flower_analyses", sep="/") )
+# observed patterns
+pca = prcomp(flower_df, center = F)
 stdev = pca$sdev / sum(pca$sdev)
-pc_numbers = paste("pc", as.character(1:length(pca$sdev)), sep='')
-names(stdev) = pc_numbers
+load = pca$rotation
+# export observed pca
+write.table(stdev, paste(getwd(), "1_flower_analyses/observed_pca_stdev.csv", sep="/"), sep=",", quote=F, col.names=T)
+write.table(load, paste(getwd(), "1_flower_analyses/observed_loadings.csv", sep="/"), sep=",", quote=F, col.names=T)
 
-### boots values
-boot_stdev_df = data.frame(matrix(0, nrow=1, ncol=4))
-boot_rotation_list = vector('list', 99)
+# sampling per group
+table(samp_geo_states)
 
-for (i in 1:99){
-  boot_num = sample(x=1:nrow(data_df), size = nrow(data_df), replace = T)
-  boot_data = data_df[boot_num,]
-  boot_pca = prcomp(boot_data, center = F)
-  boot_rotation_list[[i]] = boot_pca$rotation
-  boot_stdev = boot_pca$sdev/ sum(boot_pca$sdev)
-  boot_stdev_df = rbind(boot_stdev_df, boot_stdev)
-}
-boot_stdev_df = boot_stdev_df[-1,]
+### dataframe with sp names
+species = ftraits$species
+flower_df = data.frame(species, flower_df)
 
-### testing if observed values are greater than random values
-pvalues = c()
-for(i in 1:length(stdev) ){
-  obs_stdev = stdev[i]
-  boot_distibution = boot_stdev_df[,i]
-  greater = sum(obs_stdev > boot_distibution)
-  total =  length(boot_distibution) +1 
-  p = 1 - (greater / total)
-  pvalues = c(pvalues, p)
-}
-names(pvalues) = pc_numbers
+# mean sp traits
+mean_flower_df = aggregate(flower_df[,-1], by=list(flower_df$species), mean)
 
-# summary
-boot_min = apply(boot_stdev_df, MARGIN = 2, min)
-boot_median = apply(boot_stdev_df, MARGIN = 2, median)
-boot_max = apply(boot_stdev_df, MARGIN = 2, max)
-stdev_summary = data.frame(pc_numbers, boot_min, boot_median, boot_max, stdev) 
-summary(stdev_summary)
+# sampled geographic states
+sampled_bool = names(geo_states) %in% mean_flower_df$Group.1
+samp_geo_states = geo_states[sampled_bool]
 
-# ploting
-tiff("1_flower_analyses/stdev_pca.tiff", units="in", width=3.5, height=3, res=600)
-ggplot(data= stdev_summary, aes(x=pc_numbers, y=stdev ) ) +
-  geom_errorbar(aes(ymin=boot_min, ymax=boot_max), col="gray", size=1, width=0.01)+
-  geom_point(aes(y=boot_median), color="gray", size = 1.5) +
-  geom_point(aes(y=stdev), color="red", size = 1) +
-  xlab("principal component")+ ylab("standard deviation")+
-  theme(panel.background=element_rect(fill="white"), panel.grid=element_line(colour=NULL),panel.border=element_rect(fill=NA,colour="black"),axis.title=element_text(size=14,face="bold"),axis.text=element_text(size=12))
-dev.off()
+# geographic groups into flower data
+mean_flower_df = data.frame(samp_geo_states, mean_flower_df)
 
-# exporting test values
-write.table(pvalues, "1_flower_analyses/stdev_boot_test.csv", sep=",", quote=F, col.names=T)
+aggregate(mean_flower_df[,-c(1,2)], by=list(mean_flower_df$samp_geo_states), mean)
