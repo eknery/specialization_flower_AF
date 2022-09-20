@@ -29,16 +29,15 @@ summary(ftraits)
 
 ## selfing-diagnostic traits
 # flower size
-flower_size = ftraits$hypathium_height
+flower_size = ftraits$hypathium_height + ftraits$style_height
 # herkogamy
 minor_stamen_height = ftraits$minor_filet_height + ftraits$minor_anther_height
 herkogamy = ftraits$style_height - minor_stamen_height
-# pollen receipt & deposition
-style_height = ftraits$style_height
-stigma_size = ftraits$stigma_width
+# pollen presentation & receipt
 pore_size = ftraits$pore_long_section
+stigma_size = ftraits$stigma_width
 # flower dataframe
-flower_df = data.frame(flower_size, herkogamy, style_height, stigma_size, pore_size)
+flower_df = data.frame(flower_size, herkogamy, pore_size, stigma_size)
 
 ### sourcing other functions
 source("function_pca_evaluation.R")
@@ -55,21 +54,18 @@ load = pca$rotation
 write.table(stdev, paste(getwd(), "1_flower_analyses/observed_pca_stdev.csv", sep="/"), sep=",", quote=F, col.names=T)
 write.table(load, paste(getwd(), "1_flower_analyses/observed_loadings.csv", sep="/"), sep=",", quote=F, col.names=T)
 
-# sampling per group
-table(samp_geo_states)
-
-### dataframe with sp names
+### mean sp trait
 species = ftraits$species
 flower_df = data.frame(species, flower_df)
-
 # mean sp traits
 mean_flower_df = aggregate(flower_df[,-1], by=list(flower_df$species), mean)
 
+### traits by geographic group
 # sampled geographic states
 sampled_bool = names(geo_states) %in% mean_flower_df$Group.1
 samp_geo_states = geo_states[sampled_bool]
-
 # geographic groups into flower data
 mean_flower_df = data.frame(samp_geo_states, mean_flower_df)
-
-aggregate(mean_flower_df[,-c(1,2)], by=list(mean_flower_df$samp_geo_states), mean)
+# descriptive statistics
+geo_center = aggregate(mean_flower_df[,-c(1,2)], by=list(mean_flower_df$samp_geo_states), median)
+geo_disper = aggregate(mean_flower_df[,-c(1,2)], by=list(mean_flower_df$samp_geo_states), IQR)

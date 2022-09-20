@@ -48,7 +48,7 @@ pca_evaluation = function(df, iter=99, dir = getwd() ){
   one_plot = ggplot(data= stdev_summary, aes(x=pc_numbers, y=stdev ) ) +
     geom_errorbar(aes(ymin=rand_min, ymax=rand_max), col="gray", size=1, width=0.01)+
     geom_point(aes(y=rand_median), color="gray", size = 1.5) +
-    geom_point(aes(y=stdev), color="red", size = 1) +
+    geom_point(aes(y=stdev), color="red", size = 0.75) +
     xlab("principal component")+ ylab("standard deviation")+
     theme(panel.background=element_rect(fill="white"), panel.grid=element_line(colour=NULL),panel.border=element_rect(fill=NA,colour="black"),axis.title=element_text(size=14,face="bold"),axis.text=element_text(size=12))
   # exporting plot
@@ -93,7 +93,7 @@ pca_evaluation = function(df, iter=99, dir = getwd() ){
     one_plot = ggplot(data= load_summary, aes(x=variables, y=obs_load ) ) +
       geom_errorbar(aes(ymin=rand_min, ymax=rand_max), col="gray", size=1, width=0.05)+
       geom_point(aes(y=rand_median), color="gray", size = 1) +
-      geom_point(aes(y=obs_load), color="red", size = 1) +
+      geom_point(aes(y=obs_load), color="red", size = 0.75) +
       xlab("variable")+ ylab("loadings")+
       theme(panel.background=element_rect(fill="white"), panel.grid=element_line(colour=NULL),panel.border=element_rect(fill=NA,colour="black"),axis.title=element_text(size=14,face="bold"),axis.text=element_text(size=12), axis.text.x = element_text(size=8,angle = 90, vjust = 0.5, hjust=1))
     plot_list[[position]] = one_plot
