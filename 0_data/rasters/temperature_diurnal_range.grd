@@ -1,0 +1,26 @@
+[general]
+creator=R package 'raster'
+created=2021-02-04 15:21:09
+[georeference]
+nrows=1992
+ncols=1824
+xmin=-109
+ymin=-56
+xmax=-33
+ymax=27
+projection=+proj=longlat +datum=WGS84 +no_defs
+[data]
+datatype=FLT4S
+byteorder=little
+nbands=1
+bandorder=BIL
+categorical=FALSE
+minvalue=41
+maxvalue=211
+nodatavalue=-3.4e+38
+[legend]
+legendtype=
+values=
+color=
+[description]
+layername=temp_diurnal_range

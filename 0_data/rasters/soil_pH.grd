@@ -1,0 +1,26 @@
+[general]
+creator=R package 'raster'
+created=2020-11-03 19:41:04
+[georeference]
+nrows=1992
+ncols=1824
+xmin=-109
+ymin=-56
+xmax=-33
+ymax=27
+projection=+proj=longlat +datum=WGS84 +no_defs
+[data]
+datatype=FLT4S
+byteorder=little
+nbands=1
+bandorder=BIL
+categorical=FALSE
+minvalue=36.6084327697754
+maxvalue=94.8765029907227
+nodatavalue=-3.4e+38
+[legend]
+legendtype=
+values=
+color=
+[description]
+layername=soil_pH
