@@ -7,19 +7,29 @@ library(rgeos)
 library(hypervolume)
 library(dismo)
 
-#loading spp coordinates
+### load flower pc scores
+mean_pc_df = read.table("1_flower_analyses/mean_pc_df.csv", sep=",", h=T)
+# sampled species
+sampled_species = mean_pc_df$species
+# geographic data
+geo_states = mean_pc_df$state
+names(geo_states) = mean_pc_df$species
+
+### loading spp coordinates
 spp_points=read.table("0_data/spp_points_7km.csv", header =T, sep=",",  na.strings = "NA", fill=T)
 
-# loading bg coordinates
+### loading bg coordinates
 bg_points=read.table("0_data/bg_points_7km.csv", header =T, sep=",",  na.strings = "NA", fill=T)
 
-# loading raster layers
+### loading raster layers
 ras1 = raster("0_data/rasters/temperature_diurnal_range")
 ras2 = raster("0_data/rasters/precipitation_seasonality")
 ras3 = raster("0_data/rasters/solar_radiation")
 ras4 = raster("0_data/rasters/soil_pH.gri")
 env_ras= stack(ras1,ras2,ras3,ras4)
 
+### counting pruned phylognetic trees
+n_phylos = length(list.files("3_comparative_analyses/pruned_phylos"))
 
 ################################## data preparation ###########################
 
@@ -68,7 +78,7 @@ for (i in 1:length(scale_bg_env[1,])){
 if (length(bg_nas) > 0){
   scale_bg_env = scale_bg_env[-bg_nas,]}
 
-##################### evaluating hypervolume prediction ####################
+########################### evaluating hypervolume prediction ########################
 
 source("funtion_hypervolume_tss.R")
 
@@ -125,7 +135,7 @@ for (i in 1:length(all_perf_tables)){
   hv_performance = rbind(hv_performance, one_performance)
 }
 
-write.table(hv_performance, "1_hypervolume_inference/hv_performance.csv", sep=',', quote=F, row.names=F)
+write.table(hv_performance, "2_hypervolume_inference/hv_performance.csv", sep=',', quote=F, row.names=F)
 
 # mean performance by threshold
 mean_hv_performance = data.frame(matrix(0,nrow=1, ncol=6,))
@@ -141,12 +151,12 @@ for(sp_name in all_spp_names){
 
 mean_hv_performance = mean_hv_performance[-1,]
 colnames(mean_hv_performance)[2] = "threshold"
-write.table(mean_hv_performance, "1_hypervolume_inference/mean_hv_performance.csv", sep=',', quote=F, row.names=F)
+write.table(mean_hv_performance, "2_hypervolume_inference/mean_hv_performance.csv", sep=',', quote=F, row.names=F)
 
-########################### inferring environmental niches #############################
+############################ fitting hypervolumes ######################
 
 # loading threshold values
-mean_hv_performance=read.table("1_hypervolume_inference/mean_hv_performance.csv", header =T, sep=",",  na.strings = "NA", fill=T)
+mean_hv_performance = read.table("2_hypervolume_inference/mean_hv_performance.csv", header =T, sep=",",  na.strings = "NA", fill=T)
 
 # getting best thresholds for each species
 best_ths = rep(NA, length(all_spp_names))
@@ -158,94 +168,127 @@ for(sp_name in all_spp_names){
 }
 names(best_ths) = all_spp_names
 
-# getting spp niches
-hv_spp_list = vector('list', length(all_spp_names))
-hv_scale_positions = data.frame(matrix(NA, nrow=length(all_spp_names), ncol=ncol(scale_spp_env) ) )
-spp_hvolumes = rep(NA, length(all_spp_names))
-
+# fitting models per species
+all_spp_hv = list()
 for (sp_name in all_spp_names){
   index = which(sp_name == all_spp_names)
   sp_data = scale_spp_env[scale_spp_env$species== sp_name, 2:5]
-  sp_ths = best_ths[index]
+  sp_ths = best_ths[names(best_ths) == sp_name]
   sp_band = estimate_bandwidth(sp_data)
   sp_hv = hypervolume_gaussian(sp_data,  samples.per.point = ceiling((10^(3 + sqrt(ncol(sp_data))))/nrow(sp_data)), 
                                kde.bandwidth = sp_band, sd.count = 3, chunk.size = 100,
                                quantile.requested = sp_ths, quantile.requested.type = "probability")
-  hv_spp_list[[index]] = sp_hv
-  spp_hvolumes[index] = sp_hv@Volume
-  max_prob = which(sp_hv@ValueAtRandomPoints == max(sp_hv@ValueAtRandomPoints) )
-  niche_position = sp_hv@RandomPoints[max_prob,]
-  hv_scale_positions[index,] = c(sp_name, niche_position)
+  all_spp_hv[[index]] = sp_hv
+}
+names(all_spp_hv) = all_spp_names
+
+############################# sister hv comparison ############################
+
+# sourcing other functions
+source("function_sister_pairs.R")
+
+# setting sister taxa for each tree
+for (n in 1:n_phylos){
+  # phylogeny tree location
+  phylo_fn = paste("3_comparative_analyses/pruned_phylos/pruned_phylo_", as.character(n), sep="")
+  phylo = read.tree(phylo_fn)
+  # phylogenetic distance
+  phylo_distance = cophenetic(phylo)
+  # sister taxa
+  sister_taxa_list = sister_pairs(phylo_distance)
+  ### sister divergence time
+  sister_divergence = c()
+  for(focal_sp in sampled_species){
+    focal_sp_dists= round(phylo_distance[focal_sp,],5)
+    min_phylo_dist = round( min(phylo_distance[focal_sp,][phylo_distance[focal_sp,] != 0]), 5)
+    sister_divergence = c(sister_divergence, min_phylo_dist)
+  }
+  ### sister hv comparison
+  sister_hv_comparison = matrix(0, nrow=length(sampled_species), ncol=4)
+  for (sp_name in sampled_species){
+    index = which(sp_name == sampled_species)
+    # sp hv
+    sp_hv = all_spp_hv[[sp_name]]
+    # sister hv
+    sister_name = sister_taxa_list[[sp_name]]
+    if (length(sister_name) > 1){
+      one_sister_name = sister_name[1]
+      sister_hv = all_spp_hv[[one_sister_name]]
+      for (i in 2:length(sister_name) ){
+        one_sister_name = sister_name[i]
+        one_sister_hv = all_spp_hv[[one_sister_name]]
+        sister_set = hypervolume_set(sister_hv, one_sister_hv, check.memory = F)
+        sister_hv = sister_set[[4]]
+      }
+    } else{
+      sister_hv = all_spp_hv[[sister_name]]
+    }
+    # getting sp and sister volumes
+    sister_hv_comparison[index,1] = sp_hv@Volume
+    sister_hv_comparison[index,2] = sister_hv@Volume
+    # getting intersection and union volumes 
+    hv_set = hypervolume_set(sp_hv, sister_hv, check.memory = F)
+    sister_hv_comparison[index,3] = hv_set[[3]]@Volume # taking intersection
+    sister_hv_comparison[index,4] = hv_set[[4]]@Volume # taking union
+  }
+  # minimal hypervolume per sister pair
+  min_hv = apply(sister_hv_comparison[,1:2], MARGIN = 1, FUN= min)
+  # dataframe
+  sister_hv_comparison = data.frame(sampled_species, sister_hv_comparison, min_hv, sister_divergence)
+  colnames(sister_hv_comparison) =c("species", "sp_hv", "sister_hv", "intersection", "union", "minimal_hv","divergence_time")
+  #exporting
+  write.table(sister_hv_comparison, paste("2_hypervolume_inference/sister_hv_comparisons/sister_hv_comparison_", as.character(n), ".csv", sep="" ), sep=',', quote=F, row.names=F)
+  # update me!
+  print(paste("Time:", Sys.time(), "Loop iterarion:", as.character(n) ) )
 }
 
-# organizing hv volumes
-spp_hvolumes = data.frame(all_spp_names, spp_hvolumes)
-colnames(spp_hvolumes) = c("species", "hvolume")
+######################## calculating sister NO metrics #########################
 
-# organizing scale values
-names(hv_spp_list) = all_spp_names
-hv_scale_values = rep(0, 5)
-for (sp_name in all_spp_names){
-  index = which(sp_name == all_spp_names)
-  species = rep(sp_name, 100)
-  sp_values = hv_spp_list[[index]]@RandomPoints
-  rand_n = sample(nrow(sp_values), 100)
-  rand_sp_values = sp_values[rand_n,]
-  hv_scale_values= rbind(hv_scale_values,data.frame(species,rand_sp_values) )
-}
-hv_scale_values = hv_scale_values[-1,]
-
-# exporting
-write.table(hv_scale_values, "1_hypervolume_inference/hv_scale_values.csv", sep=',', quote=F, row.names=F)
-write.table(hv_scale_positions, "1_hypervolume_inference/hv_scale_positions.csv", sep=',', quote=F, row.names=F)
-write.table(spp_hvolumes, "1_hypervolume_inference/spp_hvolumes.csv", sep=',', quote=F, row.names=F)
-
-### setting regimes
-spp_hvolumes = read.table("1_hypervolume_inference/spp_hvolumes.csv", sep=',', h=T)
-spp_geographic_distribution = read.table("1_geographic_classification/spp_geographic_distribution.csv", sep=',', h=T)
-regimes = data.frame(spp_geographic_distribution, spp_hvolumes$hvolume)
-colnames(regimes)[3] = "hvolume"
-
-# exporting
-write.table(regimes, "1_hypervolume_inference/regimes_hvolumes.csv", sep=',', quote=F, row.names=F)
-
-############################# calculating differences and effects #################
-regimes_hvolumes = read.table("1_hypervolume_inference/regimes_hvolumes.csv", header =T, sep=",",  na.strings = "NA", fill=T)
-
-state_overall_hv = aggregate(regimes_hvolumes$hvolume, list(regimes_hvolumes$state), median)
-state_iqr_hv = aggregate(regimes_hvolumes$hvolume, list(regimes_hvolumes$state), IQR )
-
-(state_overall_hv$x[1] - state_overall_hv$x[2])/ state_overall_hv$x[2]
-(state_overall_hv$x[1] - state_overall_hv$x[3])/ state_overall_hv$x[3]
-
-state_iqr_rao
-
-############################## back transforming values ###########################
-
-#loading z-scale values
-hv_scale_values = read.table("1_hypervolume_inference/hv_scale_values.csv", header =T, sep=",",  na.strings = "NA", fill=T)
-scale_values= hv_scale_values[,2:5]
-
-#back transforming each column
-env_values = c()
-for (j in 1:ncol(scale_values)){
-  env_values = cbind(env_values, c((ras_sds[j]* scale_values[,j]) + ras_means[j]) )
+### aggregate all hv comparisons
+all_sister_hv_comparisons = read.table("2_hypervolume_inference/sister_hv_comparisons/sister_hv_comparison_1.csv", sep=',', h=T)
+for (n in 2:n_phylos ){ 
+  sister_hv_comparison = read.table(paste("2_hypervolume_inference/sister_hv_comparisons/sister_hv_comparison_", as.character(n), ".csv", sep=""), sep=',', h=T)
+  all_sister_hv_comparisons = rbind(all_sister_hv_comparisons, sister_hv_comparison)
 }
 
-# organizing
-hv_env_values = data.frame(hv_scale_values$species, env_values)
-colnames(hv_env_values) = colnames(hv_scale_values)
-
-# getting iqr scale values
-iqr = function(x){
-  q= quantile(x, probs = c(0.25, 0.75) )
-  iqr = as.numeric(q[2] - q[1])
-  return(iqr)
+### calculate niche overlap metrics by group
+sister_no_metrics = c() 
+groups = split(all_sister_hv_comparisons, sampled_species)
+for (i in 1:length(sampled_species) ){
+  group_name = names(groups)[i]
+  one_group = groups[[i]]
+  no = one_group$intersection/one_group$minimal_hv
+  mean_no = mean(no)
+  linear_model = lm(no ~ one_group$divergence_time)
+  intercept_no = linear_model$coefficients["(Intercept)"]
+  one_group_metric = c(group_name, mean_no, intercept_no)
+  sister_no_metrics = rbind(sister_no_metrics, one_group_metric)
 }
-iqr_env_values = aggregate(hv_env_values[,2:5], by=list(hv_env_values[,1]), iqr)
-colnames(iqr_env_values)[1] = "species"
+
+sister_no_metrics = data.frame(sister_no_metrics)
+colnames(sister_no_metrics) = c("state", "mean_no", "intercept_no")
+rownames(sister_no_metrics) = NULL
+sister_no_metrics$mean_no = as.numeric(sister_no_metrics$mean_no)
+sister_no_metrics$intercept_no = as.numeric(sister_no_metrics$intercept_no)
 
 #exporting
-write.table(hv_env_values, "1_hypervolume_inference/hv_env_values.csv", sep=',', quote=F, row.names=F)
-write.table(iqr_env_values, "1_hypervolume_inference/iqr_env_values.csv", sep=',', quote=F, row.names=F)
+write.table(sister_no_metrics, "2_hypervolume_inference/sister_no_metrics.csv", sep=',', quote=F, row.names=F)
+
+############################## analyzing NO metrics ############################
+
+sister_no_metrics = read.table("2_hypervolume_inference/sister_no_metrics.csv", sep=',', h=T)
+
+### summarizing metrics by group
+group_center = aggregate(sister_no_metrics$mean_no, by = list(sister_no_metrics$state), mean )
+no_df = data.frame(geo_states, group_center)
+colnames(no_df) = c("state", "species", "no_metric")
+
+### graph
+
+dependent = no_df$no_metric
+independent = mean_pc_df$pc1_score
+
+plot(dependent ~ independent)
+abline(lm(dependent ~ independent))
+summary(lm(dependent ~ independent))
 

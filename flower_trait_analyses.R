@@ -51,8 +51,8 @@ pca = prcomp(flower_df, center = F)
 stdev = pca$sdev / sum(pca$sdev)
 load = pca$rotation
 # export observed pca
-write.table(stdev, paste(getwd(), "2_flower_analyses/observed_pca_stdev.csv", sep="/"), sep=",", quote=F, col.names=T)
-write.table(load, paste(getwd(), "2_flower_analyses/observed_loadings.csv", sep="/"), sep=",", quote=F, col.names=T)
+write.table(stdev, paste(getwd(), "1_flower_analyses/observed_pca_stdev.csv", sep="/"), sep=",", quote=F, col.names=T)
+write.table(load, paste(getwd(), "1_flower_analyses/observed_loadings.csv", sep="/"), sep=",", quote=F, col.names=T)
 
 ### mean sp score
 # pc scores
@@ -66,9 +66,9 @@ samp_geo_states = geo_states[sampled_bool]
 # geographic groups into pc data
 mean_pc_df = data.frame(samp_geo_states, mean_pc_df)
 colnames(mean_pc_df) = c("state","species", "pc1_score")
-write.table(mean_pc_df, paste(getwd(), "2_flower_analyses/mean_pc_df.csv", sep="/"), sep=",", quote=F, row.names=F, col.names=T)
+write.table(mean_pc_df, paste(getwd(), "1_flower_analyses/mean_pc_df.csv", sep="/"), sep=",", quote=F, row.names=F, col.names=T)
 
-tiff("2_flower_analyses/pca_by_geography.tiff", units="in", width=3.5, height=3, res=600)
+tiff("1_flower_analyses/pca_by_geography.tiff", units="in", width=3.5, height=3, res=600)
 ggplot(data= mean_pc_df, aes(x=state, y=pc1_score, fill=state)) +
   geom_point(aes(color=state),position = position_jitter(width = 0.07), size = 2, alpha = 0.65) +
   geom_boxplot(width = 0.2, outlier.shape = NA, alpha = 0.25)+
@@ -98,8 +98,8 @@ mean_flower_df = data.frame(samp_geo_states, mean_flower_df)
 geo_center = aggregate(mean_flower_df[,-c(1,2)], by=list(mean_flower_df$samp_geo_states), median)
 geo_disper = aggregate(mean_flower_df[,-c(1,2)], by=list(mean_flower_df$samp_geo_states), IQR)
 # export observed pca
-write.table(geo_center, paste(getwd(), "2_flower_analyses/trait_center_per_geography.csv", sep="/"), sep=",", quote=F, row.names=F, col.names=T)
-write.table(geo_disper, paste(getwd(), "2_flower_analyses/trait_dispersion_per_geography.csv", sep="/"), sep=",", quote=F, row.names=F, col.names=T)
+write.table(geo_center, paste(getwd(), "1_flower_analyses/trait_center_per_geography.csv", sep="/"), sep=",", quote=F, row.names=F, col.names=T)
+write.table(geo_disper, paste(getwd(), "1_flower_analyses/trait_dispersion_per_geography.csv", sep="/"), sep=",", quote=F, row.names=F, col.names=T)
 
 ### plotting traits by geography
 # my colors
@@ -127,7 +127,7 @@ for(i in 3:ncol(mean_flower_df) ){
 for (i in 1:length(plot_list) ){
   trait_name = names(plot_list)[i] 
   file_name = paste(trait_name,".tiff", sep="")
-  tiff(paste("2_flower_analyses",file_name, sep="/"), units="in", width=3.5, height=3, res=600)
+  tiff(paste("1_flower_analyses",file_name, sep="/"), units="in", width=3.5, height=3, res=600)
     print(plot_list[[i]])
   dev.off()
 }

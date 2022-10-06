@@ -9,50 +9,36 @@ library(cladoRcpp)
 library(BioGeoBEARS)
 
 ### load flower pc scores
-mean_pc_df = read.table("2_flower_analyses/mean_pc_df.csv", sep=",", h=T)
+mean_pc_df = read.table("1_flower_analyses/mean_pc_df.csv", sep=",", h=T)
 # sampled species
 sampled_species = mean_pc_df$species
 # flower data
 flower_traits = mean_pc_df$pc1_score
 names(flower_traits) = mean_pc_df$species
+
 # geographic data
 geo_states = mean_pc_df$state
 names(geo_states) = mean_pc_df$species
   
 ### load hypervolume data
-spp_hvolumes = read.table("1_hypervolume_inference/spp_hvolumes.csv",  sep=",", h=T)
+spp_hvolumes = read.table("2_hypervolume_inference/spp_hvolumes.csv",  sep=",", h=T)
 # selecting only sampled species
 samp_hvolumes = spp_hvolumes[spp_hvolumes$species %in% sampled_species,]
 hvolumes = samp_hvolumes$hvolume
 names(hvolumes) = samp_hvolumes$species
 
 ### load altitude data
-spp_altitude = read.table("1_hypervolume_inference/spp_altitude.csv",  sep=",", h=T)
+spp_altitude = read.table("2_hypervolume_inference/spp_altitude.csv",  sep=",", h=T)
 # selecting only sampled species
 samp_altitude = spp_altitude[which(spp_altitude$species %in% sampled_species),]
 altitude = samp_altitude$altitude
 names(altitude) = samp_altitude$species
 
-### load phylogenetic trees
-# mcc tree
-mcc_phylo = read.tree("0_data/mcc_phylo.nwk")
-# random sample of trees
-rand_phylos = read.tree("0_data/100_rand_phylos.nwk")
-# pruning trees to sampled species
-pruned_phylos = rand_phylos
-for (i in 1:length(rand_phylos)){
-  pruned_phylos[[i]] = drop.tip(rand_phylos[[i]], rand_phylos[[i]]$tip.label[-match(sampled_species, rand_phylos[[i]]$tip.label)])
-}
-#exporting phylogenetic trees
-for (i in 1:length(pruned_phylos)){
-  write.tree(pruned_phylos[[i]], file = paste("3_comparative_analyses/pruned_phylos/pruned_phylo_", as.character(i), sep=""), append = FALSE, digits = 10, tree.names = FALSE)
-}
+### counting pruned phylognetic trees
+n_phylos = length(list.files("3_comparative_analyses/pruned_phylos"))
 
 
 ############################## biogeographic reconstruction ###################
-
-# number of phylogenetic trees
-n_phylo = length(pruned_phylos)
 
 # reading range data
 geog_fn = ("0_data/spp_distribution_af.data")
