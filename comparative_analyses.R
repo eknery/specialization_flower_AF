@@ -37,6 +37,58 @@ names(altitude) = samp_altitude$species
 ### counting pruned phylognetic trees
 n_phylos = length(list.files("3_comparative_analyses/pruned_phylos"))
 
+######################## niche divergence ~ flower traits ####################
+
+predictor = flower_traits
+
+plot(predictor, response)
+
+n = 1
+
+# load one phylogenetic tree
+phylo_fn = paste("3_comparative_analyses/pruned_phylos/pruned_phylo_", as.character(n), sep="")
+phylo = read.tree(phylo_fn)
+
+# load response variable
+sister_hv_comparison = read.table(paste("2_hypervolume_inference/sister_hv_comparisons/sister_hv_comparison_", as.character(n), ".csv", sep=""), sep=',', h=T)
+no = sister_hv_comparison$intersection/sister_hv_comparison$minimal_hv
+names(no) = sister_hv_comparison$species
+response = no
+
+
+# fitting models to flower traits
+fit_bm = fitContinuous(phy= phylo, response,  model="BM")
+fit_ou = fitContinuous(phy= phylo, response,  model="OU")
+# chosing best-fit model for response variable by aicc
+if (fit_bm$opt$aicc - fit_ou$opt$aicc < 0 ){
+  cor_mtx = corBrownian(value=1, phy= phylo, form=~1)
+  print("best-fit BM")
+} else {
+  if (fit_bm$opt$aicc - fit_ou$opt$aicc < 2){
+    cor_mtx = corBrownian(value=1, phy= phylo, form=~1)
+    print("best-fit BM")
+  } else {
+    cor_mtx = corMartins(value= 1, phy = phylo, fixed = T)
+    print("best-fit OU")
+  }
+}
+
+# fitting pgls
+fit_gls = gls(response ~ predictor, correlation=cor_mtx,  method = "REML")
+# taking coefficients
+intercept = fit_gls$coefficients[1]
+angular = fit_gls$coefficients[-1]
+# checking residuals
+res = resid(fit_gls)[1:length(predictor)]
+shapiro.test(res)
+# calculating R model fit
+ssr = sum(res^2)
+sst =  sum((response- mean(response))^2)
+r2 = 1 - (ssr/sst)
+
+
+
+
 
 ############################## biogeographic reconstruction ###################
 
@@ -143,34 +195,4 @@ write.table(best_estimates,"3_comparative_analyses/best_estimates.csv",sep=",",q
 table(all_best_models$model)
 
 best_estimates[all_best_models$model=="BMS",]
-
-############################### PGLS models ##################################
-
-# fitting models to flower traits
-fit_bm = fitContinuous(phy= pruned_phylos[[i]], flower_traits,  model="BM")
-fit_ou = fitContinuous(phy= pruned_phylos[[i]], flower_traits,  model="OU")
-
-# chosing best-fit model for traits by aicc
-if (fit_bm$opt$aicc - fit_ou$opt$aicc < 0 ){
-  cor_mtx = corBrownian(value=1, phy= pruned_phylos[[i]], form=~1)
-} else {
-  if (fit_bm$opt$aicc - fit_ou$opt$aicc < 2){
-    cor_mtx = corBrownian(value=1, phy= pruned_phylos[[i]], form=~1)
-  } else {
-    cor_mtx = corMartins(value= 1, phy = pruned_phylos[[i]], fixed = T)
-  }
-}
-
-# pgls rao vs geographcic state
-fit_gls_1 = gls(flower_traits ~ geo_states, correlation=cor_mtx,  method = "REML")
-
-summary(fit_gls_1)
-summary(fit_gls_2)
-summary(fit_gls_3)
-
-#checking residuals
-res = resid(fit_gls_2)[1:length(flower_traits)]
-hist(res)
-shapiro.test(res)
-
 

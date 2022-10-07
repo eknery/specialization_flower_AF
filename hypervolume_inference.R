@@ -187,7 +187,7 @@ names(all_spp_hv) = all_spp_names
 # sourcing other functions
 source("function_sister_pairs.R")
 
-# setting sister taxa for each tree
+### setting sister taxa for each tree
 for (n in 1:n_phylos){
   # phylogeny tree location
   phylo_fn = paste("3_comparative_analyses/pruned_phylos/pruned_phylo_", as.character(n), sep="")
@@ -244,51 +244,80 @@ for (n in 1:n_phylos){
 
 ######################## calculating sister NO metrics #########################
 
-### aggregate all hv comparisons
-all_sister_hv_comparisons = read.table("2_hypervolume_inference/sister_hv_comparisons/sister_hv_comparison_1.csv", sep=',', h=T)
-for (n in 2:n_phylos ){ 
+sister_no_metrics = c()
+for (n in 1:n_phylos ){ 
   sister_hv_comparison = read.table(paste("2_hypervolume_inference/sister_hv_comparisons/sister_hv_comparison_", as.character(n), ".csv", sep=""), sep=',', h=T)
-  all_sister_hv_comparisons = rbind(all_sister_hv_comparisons, sister_hv_comparison)
-}
-
-### calculate niche overlap metrics by group
-sister_no_metrics = c() 
-groups = split(all_sister_hv_comparisons, sampled_species)
-for (i in 1:length(sampled_species) ){
-  group_name = names(groups)[i]
-  one_group = groups[[i]]
-  no = one_group$intersection/one_group$minimal_hv
-  mean_no = mean(no)
-  linear_model = lm(no ~ one_group$divergence_time)
-  intercept_no = linear_model$coefficients["(Intercept)"]
-  one_group_metric = c(group_name, mean_no, intercept_no)
-  sister_no_metrics = rbind(sister_no_metrics, one_group_metric)
+  geo_groups = split(sister_hv_comparison, geo_states)
+  for (i in 1:length(geo_groups) ){
+    group_name = names(geo_groups)[i]
+    one_group = geo_groups[[i]]
+    no = one_group$intersection/one_group$union
+    mean_no = mean(no)
+    linear_model = lm(no ~ one_group$divergence_time)
+    intercept_no = linear_model$coefficients["(Intercept)"]
+    angular_no = linear_model$coefficients[2]
+    one_group_metric = c(group_name, mean_no, intercept_no, angular_no)
+    sister_no_metrics = rbind(sister_no_metrics, one_group_metric)
+  }
 }
 
 sister_no_metrics = data.frame(sister_no_metrics)
-colnames(sister_no_metrics) = c("state", "mean_no", "intercept_no")
+colnames(sister_no_metrics) = c("state", "mean_no", "intercept_no", "angular_no")
 rownames(sister_no_metrics) = NULL
 sister_no_metrics$mean_no = as.numeric(sister_no_metrics$mean_no)
 sister_no_metrics$intercept_no = as.numeric(sister_no_metrics$intercept_no)
+sister_no_metrics$angular_no = as.numeric(sister_no_metrics$angular_no)
+
+str(sister_no_metrics)
 
 #exporting
 write.table(sister_no_metrics, "2_hypervolume_inference/sister_no_metrics.csv", sep=',', quote=F, row.names=F)
 
-############################## analyzing NO metrics ############################
+############################## analyzing RO metrics ############################
 
 sister_no_metrics = read.table("2_hypervolume_inference/sister_no_metrics.csv", sep=',', h=T)
 
-### summarizing metrics by group
-group_center = aggregate(sister_no_metrics$mean_no, by = list(sister_no_metrics$state), mean )
-no_df = data.frame(geo_states, group_center)
-colnames(no_df) = c("state", "species", "no_metric")
+### summarizing metrics 
+means = aggregate(sister_no_metrics$angular_no, by = list(sister_no_metrics$state), mean )
+sds = aggregate(sister_no_metrics$angular_no, by = list(sister_no_metrics$state), sd )
 
-### graph
+### permutation test
+# set comparison
+i = 1
+j = 2
+diff = means$x[i] -  means$x[j]
+# random comparisons
+iterations = 1000
+rand_diff =  c()
+for(n in 1:iterations){
+  rand_state = sample(sister_no_metrics$state)
+  rand_means = aggregate(sister_no_metrics$angular_no, by = list(rand_state), mean )
+  rand_diff[n] = rand_means$x[i] - rand_means$x[j]
+}
 
-dependent = no_df$no_metric
-independent = mean_pc_df$pc1_score
+if (diff < median(rand_diff)){
+  pvalue = 1 - ( sum(diff < rand_diff) / (iterations +1) )
+} else{
+  pvalue = 1 - ( sum(diff >= rand_diff) / (iterations +1) )
+}
+print(paste("p-value:", pvalue))
+################################## plotting ##################################
 
-plot(dependent ~ independent)
-abline(lm(dependent ~ independent))
-summary(lm(dependent ~ independent))
+### graphical parameters
+# my colors
+mycols = c( "#1E88E5", "#FFC107", "#D81B60")
+names(mycols) = c("AF", "AFother", "other")
+# text size
+axis_title_size = 10
+x_text_size = 8
 
+tiff("2_hypervolume_inference/angular_no_per_distribution.tiff", units="in", width=3.5, height=3, res=600)
+ggplot(data= sister_no_metrics, aes(x=state, y=angular_no, fill= state)) +
+  geom_point(aes(color=state),position = position_jitter(width = 0.07), size = 1.5, alpha = 0.25) +
+  geom_boxplot(width = 0.4, outlier.shape = NA, alpha = 0.50)+
+  scale_fill_manual(values=mycols)+
+  scale_colour_manual(values=mycols)+
+  xlab("geographic distribution")+ ylab("angular NO")+
+  scale_x_discrete(labels=c("AF" = "AF-endemic", "AFother" = "AF and other", "other" = "outside AF"))+
+  theme(panel.background=element_rect(fill="white"), panel.grid=element_line(colour=NULL),panel.border=element_rect(fill=NA,colour="black"),axis.title=element_text(size=axis_title_size,face="bold"),axis.text.x=element_text(size=x_text_size),axis.text.y = element_text(angle = 90),legend.position = "none")
+dev.off()
