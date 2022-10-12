@@ -9,16 +9,16 @@ library(cladoRcpp)
 library(BioGeoBEARS)
 
 ### load flower pc scores
-mean_pc_df = read.table("1_flower_analyses/mean_pc_df.csv", sep=",", h=T)
+flower_pc_df = read.table("1_flower_analyses/flower_pc_df.csv", sep=",", h=T)
 # sampled species
-sampled_species = mean_pc_df$species
+sampled_species = flower_pc_df$species
 # flower data
-flower_traits = mean_pc_df$pc1_score
-names(flower_traits) = mean_pc_df$species
+flower_traits = flower_pc_df$pc1_score
+names(flower_traits) = flower_pc_df$species
 
 # geographic data
-geo_states = mean_pc_df$state
-names(geo_states) = mean_pc_df$species
+geo_states = flower_pc_df$state
+names(geo_states) = flower_pc_df$species
   
 ### load hypervolume data
 spp_hvolumes = read.table("2_hypervolume_inference/spp_hvolumes.csv",  sep=",", h=T)
@@ -156,7 +156,7 @@ source("function_fit_evo_models.R")
 source("function_choose_best.R")
 
 ### setting trait regimes
-df = data.frame(mean_pc_df[,2], mean_pc_df[,1], mean_pc_df[,3])
+df = data.frame(flower_pc_df[,2], flower_pc_df[,1], flower_pc_df[,3])
 colnames(df) = c("species", "state", "trait")
 spp_trait_regimes = df
 

@@ -59,17 +59,17 @@ write.table(load, paste(getwd(), "1_flower_analyses/observed_loadings.csv", sep=
 pc_df = data.frame(flower_df$species, pca$x[,1])
 colnames(pc_df) = c("species", "pc1_score")
 # mean sp traits
-mean_pc_df = aggregate(pc_df[,-1], by=list(pc_df$species), mean)
+flower_pc_df = aggregate(pc_df[,-1], by=list(pc_df$species), mean)
 # sampled geographic states
-sampled_bool = names(geo_states) %in% mean_pc_df$Group.1
+sampled_bool = names(geo_states) %in% flower_pc_df$Group.1
 samp_geo_states = geo_states[sampled_bool]
 # geographic groups into pc data
-mean_pc_df = data.frame(samp_geo_states, mean_pc_df)
-colnames(mean_pc_df) = c("state","species", "pc1_score")
-write.table(mean_pc_df, paste(getwd(), "1_flower_analyses/mean_pc_df.csv", sep="/"), sep=",", quote=F, row.names=F, col.names=T)
+flower_pc_df = data.frame(samp_geo_states, flower_pc_df)
+colnames(flower_pc_df) = c("state","species", "pc1_score")
+write.table(flower_pc_df, paste(getwd(), "1_flower_analyses/flower_pc_df.csv", sep="/"), sep=",", quote=F, row.names=F, col.names=T)
 
 tiff("1_flower_analyses/pca_by_geography.tiff", units="in", width=3.5, height=3, res=600)
-ggplot(data= mean_pc_df, aes(x=state, y=pc1_score, fill=state)) +
+ggplot(data= flower_pc_df, aes(x=state, y=pc1_score, fill=state)) +
   geom_point(aes(color=state),position = position_jitter(width = 0.07), size = 2, alpha = 0.65) +
   geom_boxplot(width = 0.2, outlier.shape = NA, alpha = 0.25)+
   geom_flat_violin(position = position_nudge(x = 0.12, y = 0), alpha = 0.25) +

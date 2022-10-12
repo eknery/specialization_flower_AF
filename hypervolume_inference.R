@@ -283,8 +283,8 @@ sds = aggregate(sister_no_metrics$angular_no, by = list(sister_no_metrics$state)
 
 ### permutation test
 # set comparison
-i = 1
-j = 2
+i = 2
+j = 3
 diff = means$x[i] -  means$x[j]
 # random comparisons
 iterations = 1000
