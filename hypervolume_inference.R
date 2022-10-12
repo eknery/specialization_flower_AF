@@ -8,12 +8,12 @@ library(hypervolume)
 library(dismo)
 
 ### load flower pc scores
-mean_pc_df = read.table("1_flower_analyses/mean_pc_df.csv", sep=",", h=T)
+flower_pc_df = read.table("1_flower_analyses/flower_pc_df.csv", sep=",", h=T)
 # sampled species
-sampled_species = mean_pc_df$species
+sampled_species = flower_pc_df$species
 # geographic data
-geo_states = mean_pc_df$state
-names(geo_states) = mean_pc_df$species
+geo_states = flower_pc_df$state
+names(geo_states) = flower_pc_df$species
 
 ### loading spp coordinates
 spp_points=read.table("0_data/spp_points_7km.csv", header =T, sep=",",  na.strings = "NA", fill=T)
@@ -301,7 +301,15 @@ if (diff < median(rand_diff)){
   pvalue = 1 - ( sum(diff >= rand_diff) / (iterations +1) )
 }
 print(paste("p-value:", pvalue))
+
 ################################## plotting ##################################
+### packages
+library(tidyverse)
+library(PupillometryR)
+library(ggpubr)
+library(readr)
+library(tidyr)
+library(ggplot2)
 
 ### graphical parameters
 # my colors
@@ -314,7 +322,8 @@ x_text_size = 8
 tiff("2_hypervolume_inference/angular_no_per_distribution.tiff", units="in", width=3.5, height=3, res=600)
 ggplot(data= sister_no_metrics, aes(x=state, y=angular_no, fill= state)) +
   geom_point(aes(color=state),position = position_jitter(width = 0.07), size = 1.5, alpha = 0.25) +
-  geom_boxplot(width = 0.4, outlier.shape = NA, alpha = 0.50)+
+  geom_boxplot(width = 0.2, outlier.shape = NA, alpha = 0.25)+
+  geom_flat_violin(position = position_nudge(x = 0.12, y = 0), alpha = 0.25) +
   scale_fill_manual(values=mycols)+
   scale_colour_manual(values=mycols)+
   xlab("geographic distribution")+ ylab("angular NO")+
