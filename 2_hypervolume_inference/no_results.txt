@@ -1,0 +1,17 @@
+### angular_no
+
+# means
+Group.1            x
+1      AF -0.021928395
+2 AFother  0.009225254
+3   other  0.005395362
+
+# sds
+ Group.1           x
+1      AF 0.007908756
+2 AFother 0.017342889
+3   other 0.002999328
+
+AF-AFother = "p-value: 0.000999000999000965"
+AF-other = "p-value: 0.000999000999000965"
+AFother-other = "p-value: 0.0539460539460539"

@@ -1,5 +1,6 @@
 
 pca_evaluation = function(df, iter=99, dir = getwd() ){
+  test_results = list()
   ### observed values 
   pca = prcomp(df, center = F)
   stdev = pca$sdev / sum(pca$sdev)
@@ -7,7 +8,6 @@ pca_evaluation = function(df, iter=99, dir = getwd() ){
   pc_numbers = paste("pc", as.character(1:length(pca$sdev)), sep='')
   names(stdev) = pc_numbers
   ### random values
-  # define number of iterations
   # set result objects
   rand_stdev_df = data.frame(matrix(0, nrow=1, ncol=length(stdev) ) )
   rand_load_list = vector('list', iter)
@@ -36,6 +36,7 @@ pca_evaluation = function(df, iter=99, dir = getwd() ){
     pvalues = c(pvalues, p)
   }
   names(pvalues) = pc_numbers
+  test_results[[1]] = pvalues
   # exporting test values
   file_name = "stdev_pca_test.csv"
   write.table(pvalues, paste(dir,file_name, sep="/"), sep=",", quote=F, col.names=T)
@@ -127,4 +128,5 @@ pca_evaluation = function(df, iter=99, dir = getwd() ){
     print(plot_list[[position]])
     dev.off()
   }
+  return(test_results)
 }
