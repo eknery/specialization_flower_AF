@@ -202,7 +202,7 @@ regime = flower_proxy$state
 trait_df = flower_proxy[,-c(1:2)]
 
 ### loop over all traits
-for (j in 1:ncol(trait_df)){
+for (j in 3:ncol(trait_df)){
   ### choose trait
   trait = trait_df[,j]
   trait_name = colnames(trait_df)[j]
