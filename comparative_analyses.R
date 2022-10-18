@@ -301,20 +301,34 @@ for (trait_name in trait_names){
   state = c(rep("AF", n_rows), rep("AFother", n_rows), rep("other", n_rows))
   # organize into dataframe
   estimates_df = data.frame(state, sigma, theta, alpha)
+  ### describing parameter estimates
+  mean_estimates = aggregate(estimates_df[,-1], by=list(estimates_df[,1]), function(x){mean(x, na.rm=T)})
+  sd_estimates = aggregate(estimates_df[,-1], by=list(estimates_df[,1]), function(x){sd(x, na.rm=T)})
+  # export
+  write.table(mean_estimates, paste(dir,"/mean_estimates.csv", sep=""), sep=",", row.names=F, quote=F)
+  write.table(sd_estimates, paste(dir,"/sd_estimates.csv", sep=""), sep=",", row.names=F, quote=F)
   ### plotting parameter estimates
   # looping over parameters
   for (param_name in c("sigma", "theta", "alpha")){
+    # picking one parameter
     param_index = which(param_name == colnames(estimates_df)) - 1 
     param_df = data.frame(estimates_df[,"state"], estimates_df[,param_name])
     colnames(param_df) = c("state", "parameter")
+    # checking outliers
+    med = median(param_df$parameter, na.rm = T) 
+    bound= IQR(param_df$parameter, na.rm = T)*1.5
+    up_bound = med + bound
+    out_sum = sum(param_df$parameter > up_bound, na.rm = T)
+    if (out_sum != 0){  param_df = param_df[param_df$parameter < up_bound,] }
+    # plot parameter
     plot_param = ggplot(data= param_df, aes(x=state, y=parameter, fill=state)) +
-      geom_point(aes(color=state),position = position_jitter(width = 0.07), size = 2, alpha = 0.65) +
-      geom_boxplot(width = 0.2, outlier.shape = NA, alpha = 0.25)+
+      geom_point(aes(color=state),position = position_jitter(width = 0.07), size = 1, alpha = 0.65) +
+      geom_boxplot(width = 0.4, outlier.shape = NA, alpha = 0.25)+
       scale_fill_manual(values=mycols)+
       scale_colour_manual(values=mycols)+
       xlab("geographic distribution")+ ylab(param_name)+
       scale_x_discrete(labels=c("AF" = "AF-endemic", "AFother" = "AF and other\ndomains", "other" = "outside AF")) +
-      theme(panel.background=element_rect(fill="white"), panel.grid=element_line(colour=NULL), panel.border=element_rect(fill=NA,colour="black"), axis.title=element_text(size=10,face="bold"), axis.text.x=element_text(size=6), legend.position = "none") 
+      theme(panel.background=element_rect(fill="white"), panel.grid=element_line(colour=NULL), panel.border=element_rect(fill=NA,colour="black"), axis.title=element_text(size=10,face="bold"), axis.text=element_text(size=6), legend.position = "none") 
    # export plot
     tiff(paste(dir, "/",param_name, ".tiff", sep=""), units="in", width=2.5, height=2, res=600)
       print(plot_param)
