@@ -24,7 +24,7 @@ geo_states[af_percentage > low_ths & af_percentage < high_ths] = "AFother"
 names(geo_states) = spp_count_domain$species
 
 ### loading all flower traits
-ftraits = read.table("0_data/flower_trait_matrix_new.csv", sep=",", h=T)
+ftraits = read.table("0_data/flower_trait_matrix.csv", sep=",", h=T)
 summary(ftraits)
 
 ## selfing-diagnostic traits

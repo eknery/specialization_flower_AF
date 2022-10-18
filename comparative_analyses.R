@@ -201,8 +201,12 @@ species = flower_proxy$species
 regime = flower_proxy$state
 trait_df = flower_proxy[,-c(1:2)]
 
+# setting max parameter numbers
+max_param_num = length(unique(regime))*4
+
 ### loop over all traits
-for (j in 3:ncol(trait_df)){
+for (j in 1:ncol(trait_df)){
+  j= 3
   ### choose trait
   trait = trait_df[,j]
   trait_name = colnames(trait_df)[j]
@@ -230,8 +234,15 @@ for (j in 3:ncol(trait_df)){
     all_best_estimates[[i]] = best_choice$best_estimates
     print(i)
   }
+  # organizing estimates into dataframe
   best_estimates =c()
   for (i in 1:length(all_best_estimates)){
+    param_num = length(all_best_estimates[[i]])
+    if ( param_num < max_param_num ){
+      diff = max_param_num - param_num
+      na_param = rep(NA, diff)
+      all_best_estimates[[i]] = c(all_best_estimates[[i]], na_param)
+    } 
     best_estimates = rbind(best_estimates,all_best_estimates[[i]])
   }
   ### exporting results
@@ -241,59 +252,74 @@ for (j in 3:ncol(trait_df)){
 
 ############################## describing best-fit model #########################
 
-### load model fit and estimates
-all_best_models = read.table("3_comparative_analyses/best_models.csv",sep=",", h=T)
-best_estimates = read.table("3_comparative_analyses/best_estimates.csv",sep=",", h=T)
+### listing traits 
+trait_names = list.files("3_comparative_analyses/OUWIE")
 
-### find model with best-fit across trees
-best_fit_count = table(all_best_models$model)
-max_count = max(best_fit_count)
-best_model = best_fit_count[best_fit_count == max_count]
-best_model_name = names(best_model)
+# my colors
+mycols = c( "#1E88E5", "#FFC107", "#D81B60")
 
-### retrieve best estimates
-model_estimates = best_estimates[all_best_models$model == best_model_name,]
-n_rows = nrow(model_estimates)
-
-# take theta
-theta_df = model_estimates[,which(colnames(model_estimates) %in% c("theta_1","theta_2", "theta_3"))]
-theta = c()
-for (j in 1:ncol(theta_df)){
-  theta = c(theta, theta_df[,j])
+### loop over all traits
+for (trait_name in trait_names){
+  ### setting output dir
+  dir = paste("3_comparative_analyses/OUWIE/",trait_name, sep="")
+  ### load model fit and estimates
+  all_best_models = read.table(paste(dir,"/best_models.csv", sep=""), sep=",", h=T)
+  best_estimates = read.table(paste(dir,"/best_estimates.csv", sep=""), sep=",", h=T)
+  ### find model with best-fit across trees
+  best_fit_count = table(all_best_models$model)
+  max_count = max(best_fit_count)
+  best_model = best_fit_count[best_fit_count == max_count]
+  best_model_name = names(best_model)
+  ### retrieve best estimates
+  model_estimates = best_estimates[all_best_models$model == best_model_name,]
+  n_rows = nrow(model_estimates)
+  # take sigma
+  sigma_sq_df = model_estimates[,which(colnames(model_estimates) %in% c("sigma_sq_1","sigma_sq_2", "sigma_sq_3"))]
+  sigma_sq = c()
+  if( is.vector(sigma_sq_df) ){
+    sigma_sq = sigma_sq_df
+  } else {
+    for (j in 1:ncol(sigma_sq_df)){ sigma_sq = c(sigma_sq, sigma_sq_df[,j]) }
+  }
+  sigma = sqrt(sigma_sq)
+  # take theta
+  theta_df = model_estimates[,which(colnames(model_estimates) %in% c("theta_1","theta_2", "theta_3"))]
+  theta = c()
+  if( is.vector(theta_df) ){
+    theta = theta_df
+  } else {
+    for (j in 1:ncol(theta_df)){ theta = c(theta, theta_df[,j]) }
+  }  
+  # take alpha
+  alpha_df = model_estimates[,which(colnames(model_estimates) %in% c("alpha_1","alpha_2", "alpha_3"))]
+  alpha = c()
+  if( is.vector(alpha_df) ){
+    alpha = alpha_df
+  } else {
+    for (j in 1:ncol(alpha_df)){ alpha = c(alpha, alpha_df[,j]) }
+  }
+  # state
+  state = c(rep("AF", n_rows), rep("AFother", n_rows), rep("other", n_rows))
+  # organize into dataframe
+  estimates_df = data.frame(state, sigma, theta, alpha)
+  ### plotting parameter estimates
+  # looping over parameters
+  for (param_name in c("sigma", "theta", "alpha")){
+    param_index = which(param_name == colnames(estimates_df)) - 1 
+    param_df = data.frame(estimates_df[,"state"], estimates_df[,param_name])
+    colnames(param_df) = c("state", "parameter")
+    plot_param = ggplot(data= param_df, aes(x=state, y=parameter, fill=state)) +
+      geom_point(aes(color=state),position = position_jitter(width = 0.07), size = 2, alpha = 0.65) +
+      geom_boxplot(width = 0.2, outlier.shape = NA, alpha = 0.25)+
+      scale_fill_manual(values=mycols)+
+      scale_colour_manual(values=mycols)+
+      xlab("geographic distribution")+ ylab(param_name)+
+      scale_x_discrete(labels=c("AF" = "AF-endemic", "AFother" = "AF and other\ndomains", "other" = "outside AF")) +
+      theme(panel.background=element_rect(fill="white"), panel.grid=element_line(colour=NULL), panel.border=element_rect(fill=NA,colour="black"), axis.title=element_text(size=10,face="bold"), axis.text.x=element_text(size=6), legend.position = "none") 
+   # export plot
+    tiff(paste(dir, "/",param_name, ".tiff", sep=""), units="in", width=2.5, height=2, res=600)
+      print(plot_param)
+    dev.off()
+  }
 }
-
-# take sigma
-sigma_sq_df = model_estimates[,which(colnames(model_estimates) %in% c("sigma_sq_1","sigma_sq_2", "sigma_sq_3"))]
-sigma_sq = c()
-for (j in 1:ncol(sigma_sq_df)){
-  sigma_sq = c(sigma_sq, sigma_sq_df[,j])
-}
-
-# state
-state = c(rep("AF", n_rows), rep("AFother", n_rows), rep("other", n_rows))
-
-# organize into dataframe
-estimates_df = data.frame(state, theta, sigma_sq)
-
-ggplot(data= estimates_df, aes(x=state, y=theta, fill=state)) +
-  geom_point(aes(color=state),position = position_jitter(width = 0.07), size = 2, alpha = 0.65) +
-  geom_boxplot(width = 0.2, outlier.shape = NA, alpha = 0.25)+
-  #geom_flat_violin(position = position_nudge(x = 0.12, y = 0), alpha = 0.25) +
-  scale_fill_manual(values=mycols)+
-  scale_colour_manual(values=mycols)+
-  xlab("geographic distribution")+ ylab("theta")+
-  scale_x_discrete(labels=c("AF" = "AF-endemic", "AFother" = "AF and other\ndomains", "other" = "outside AF"))+
-  theme(panel.background=element_rect(fill="white"), panel.grid=element_line(colour=NULL),panel.border=element_rect(fill=NA,colour="black"),axis.title=element_text(size=14,face="bold"),axis.text.x=element_text(size=8),legend.position = "none")
-
-tiff("3_comparative_analyses/sigma_estimates.tiff", units="in", width=3.5, height=3, res=600)
-ggplot(data= estimates_df, aes(x=state, y=sqrt(sigma_sq), fill=state)) +
-  geom_point(aes(color=state),position = position_jitter(width = 0.07), size = 2, alpha = 0.65) +
-  geom_boxplot(width = 0.2, outlier.shape = NA, alpha = 0.25)+
-  #geom_flat_violin(position = position_nudge(x = 0.12, y = 0), alpha = 0.25) +
-  scale_fill_manual(values=mycols)+
-  scale_colour_manual(values=mycols)+
-  xlab("geographic distribution")+ ylab("sigma")+
-  scale_x_discrete(labels=c("AF" = "AF-endemic", "AFother" = "AF and other\ndomains", "other" = "outside AF"))+
-  theme(panel.background=element_rect(fill="white"), panel.grid=element_line(colour=NULL),panel.border=element_rect(fill=NA,colour="black"),axis.title=element_text(size=14,face="bold"),axis.text.x=element_text(size=8),legend.position = "none")
-dev.off()
 
