@@ -5,7 +5,7 @@ pca_evaluation = function(df, iter=99, dir = getwd() ){
   pca = prcomp(df, center = F)
   stdev = pca$sdev / sum(pca$sdev)
   load = pca$rotation
-  pc_numbers = paste("pc", as.character(1:length(pca$sdev)), sep='')
+  pc_numbers = paste("PC", as.character(1:length(pca$sdev)), sep='')
   names(stdev) = pc_numbers
   ### random values
   # set result objects

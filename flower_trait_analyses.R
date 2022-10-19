@@ -17,15 +17,14 @@ spp_count_domain = read.table("0_data/spp_count_domain.csv", h=T, sep=",")
 ## define geopraphic states 
 high_ths = 0.90
 low_ths = (1 - high_ths)
-geo_states = af_percentage = spp_count_domain$AF/ apply(spp_count_domain[,-1], MARGIN = 1, FUN=sum)
-geo_states[af_percentage >= high_ths] = "AF"
-geo_states[af_percentage <= low_ths] = "other"
-geo_states[af_percentage > low_ths & af_percentage < high_ths] = "AFother"
-names(geo_states) = spp_count_domain$species
+geo_state = af_percentage = spp_count_domain$AF/ apply(spp_count_domain[,-1], MARGIN = 1, FUN=sum)
+geo_state[af_percentage >= high_ths] = "AF"
+geo_state[af_percentage <= low_ths] = "other"
+geo_state[af_percentage > low_ths & af_percentage < high_ths] = "other"
+names(geo_state) = spp_count_domain$species
 
 ### loading all flower traits
 ftraits = read.table("0_data/flower_trait_matrix.csv", sep=",", h=T)
-summary(ftraits)
 
 ## selfing-diagnostic traits
 # flower size
@@ -43,7 +42,10 @@ flower_df = data.frame(flower_size, herkogamy, pore_size, stigma_size)
 
 ### sourcing other functions
 source("function_pca_evaluation.R")
-pca_evaluation(df= flower_df, iter=999, dir= paste(getwd(), "1_flower_analyses", sep="/") )
+pca_pvalues = pca_evaluation(df= flower_df, iter=999, dir= paste(getwd(), "1_flower_analyses", sep="/") )
+
+# picking significant
+pca_significant = which(pca_pvalues[[1]] < 0.05)
 
 ### observed patterns
 pca = prcomp(flower_df, center = F)
@@ -55,38 +57,38 @@ write.table(load, paste(getwd(), "1_flower_analyses/observed_loadings.csv", sep=
 
 ### mean sp score
 # pc scores
-pc_df = data.frame(ftraits$species, pca$x[,2])
-colnames(pc_df) = c("species", "pc1_score")
+pc_df = data.frame(ftraits$species, pca$x[,pca_significant])
+colnames(pc_df)[1] = "species"
 # mean sp traits
 pc_flower_df = aggregate(pc_df[,-1], by=list(pc_df$species), median)
 # sampled geographic states
-sampled_bool = names(geo_states) %in% pc_flower_df$Group.1
-samp_geo_states = geo_states[sampled_bool]
+sampled_bool = names(geo_state) %in% pc_flower_df$Group.1
+samp_geo_state = geo_state[sampled_bool]
 # geographic groups into pc data
-pc_flower_df = data.frame(samp_geo_states, pc_flower_df)
-colnames(pc_flower_df) = c("state","species", "pc2_score")
+pc_flower_df = data.frame(samp_geo_state, pc_flower_df)
+colnames(pc_flower_df)[1:2] = c("state","species")
 write.table(pc_flower_df, paste(getwd(), "1_flower_analyses/pc_flower_df.csv", sep="/"), sep=",", quote=F, row.names=F, col.names=T)
 
 ### plotting
 # my colors
-mycols = c( "#1E88E5", "#FFC107", "#D81B60")
-names(mycols) = c("AF", "AFother", "other")
+mycols = c( "#1E88E5", "#D81B60")
+names(mycols) = c("AF","other")
 # plot
-tiff("1_flower_analyses/pc2_by_geography.tiff", units="in", width=3.5, height=3, res=600)
-ggplot(data= pc_flower_df, aes(x=state, y=pc1_score, fill=state)) +
+tiff("1_flower_analyses/pc_by_geography.tiff", units="in", width=3.5, height=3, res=600)
+ggplot(data= pc_flower_df, aes(x=state, y=PC1, fill=state)) +
   geom_point(aes(color=state),position = position_jitter(width = 0.07), size = 2, alpha = 0.65) +
   geom_boxplot(width = 0.2, outlier.shape = NA, alpha = 0.25)+
   geom_flat_violin(position = position_nudge(x = 0.12, y = 0), alpha = 0.25) +
   scale_fill_manual(values=mycols)+
   scale_colour_manual(values=mycols)+
-  xlab("geographic distribution")+ ylab("PC2 score")+
+  xlab("geographic distribution")+ ylab("PC1 score")+
   scale_x_discrete(labels=c("AF" = "AF-endemic", "AFother" = "AF and other\ndomains", "other" = "outside AF"))+
   theme(panel.background=element_rect(fill="white"), panel.grid=element_line(colour=NULL),panel.border=element_rect(fill=NA,colour="black"),axis.title=element_text(size=14,face="bold"),axis.text.x=element_text(size=8),legend.position = "none")
 dev.off()
 
 ############################## flower traits by geographic state ###################
 
-### mean sp trait
+### center sp trait
 species = ftraits$species
 flower_df = data.frame(species, flower_df)
 # center sp traits
@@ -94,13 +96,13 @@ center_flower_df = aggregate(flower_df[,-1], by=list(flower_df$species), median)
 
 ### traits by geographic group
 # sampled geographic states
-sampled_bool = names(geo_states) %in% center_flower_df$Group.1
-samp_geo_states = geo_states[sampled_bool]
+sampled_bool = names(geo_state) %in% center_flower_df$Group.1
+samp_geo_state = geo_state[sampled_bool]
 # geographic groups into flower data
-center_flower_df = data.frame(samp_geo_states, center_flower_df)
+center_flower_df = data.frame(samp_geo_state, center_flower_df)
 # descriptive statistics
-geo_center = aggregate(center_flower_df[,-c(1,2)], by=list(center_flower_df$samp_geo_states), mean)
-geo_disper = aggregate(center_flower_df[,-c(1,2)], by=list(center_flower_df$samp_geo_states), sd)
+geo_center = aggregate(center_flower_df[,-c(1,2)], by=list(center_flower_df$samp_geo_state), mean)
+geo_disper = aggregate(center_flower_df[,-c(1,2)], by=list(center_flower_df$samp_geo_state), sd)
 # name
 colnames(center_flower_df)[1:2] = c("state", "species")
 # exporting
@@ -110,7 +112,7 @@ write.table(geo_disper, paste(getwd(), "1_flower_analyses/trait_dispersion_per_g
 
 ### plotting traits by geography
 # my colors
-mycols = c( "#1E88E5", "#FFC107", "#D81B60")
+mycols = c( "#1E88E5","#D81B60")
 # plot list
 plot_list = list()
 # loop over variables
@@ -134,7 +136,7 @@ for(i in 3:ncol(center_flower_df) ){
     scale_fill_manual(values=mycols)+
     scale_colour_manual(values=mycols)+
     xlab("geographic distribution")+ ylab(trait_name)+
-    scale_x_discrete(labels=c("AF" = "AF-endemic", "AFother" = "AF and other\ndomains", "other" = "outside AF"))+
+    scale_x_discrete(labels=c("AF" = "AF-endemic", "other" = "non-endemic"))+
     theme(panel.background=element_rect(fill="white"), panel.grid=element_line(colour=NULL),panel.border=element_rect(fill=NA,colour="black"),axis.title=element_text(size=14,face="bold"),axis.text.x=element_text(size=8),legend.position = "none")
   plot_list[[i-2]] = one_plot
   names(plot_list)[i-2] = trait_name

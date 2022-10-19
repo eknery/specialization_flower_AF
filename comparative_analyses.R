@@ -9,7 +9,6 @@ library(cladoRcpp)
 library(BioGeoBEARS)
 
 ### load flower pc scores
-pc_flower_df = read.table("1_flower_analyses/pc_flower_df.csv", sep=",", h=T)
 center_flower_df = read.table("1_flower_analyses/center_flower_df.csv", sep=",", h=T)
 
 # choose flower proxy!
@@ -18,10 +17,10 @@ flower_proxy = center_flower_df
 # sampled species
 sampled_species = center_flower_df$species
 
-# geographic data
-geo_states = center_flower_df$state
-names(geo_states) = center_flower_df$species
-  
+# geographic state
+geo_state = center_flower_df$state
+names(geo_state) = center_flower_df$species
+
 ### load species' occupied elevation
 spp_altitude = read.table("2_hypervolume_inference/spp_altitude.csv", sep=",", h=T)
 # sampled indexes
@@ -37,14 +36,23 @@ n_phylo = length(list.files("3_comparative_analyses/pruned_phylos"))
 
 ############################### fitting pgls models ###########################
 
+### create directory for pgls models
+# check if dir exists
+dir_check = dir.exists(paths="3_comparative_analyses/PGLS")
+# create dir if not created yet
+if (dir_check == FALSE){
+  dir.create(path= "3_comparative_analyses/PGLS", showWarnings = , recursive = FALSE, mode = "0777")
+}
+
+### setting common variables
 # choose phylogenetic tree
 phylo = mcc_phylo
 
 # set predictor variable
-predictor = altitude
+predictor = geo_state
 
 # set dataframe with response variables
-response_df = flower_proxy[,-c(1:2)]
+response_df = data.frame(flower_proxy[,-c(1,2)])
 naming_vector = flower_proxy$species
 
 ### on the relationship
@@ -53,13 +61,21 @@ naming_vector = flower_proxy$species
 #pore_size = log
 #sitgma_size = log
 
-log_these = c("pore_size", "sitgma_size")
+log_these = c("altitude", "pore_size", "sitgma_size")
 
-for (j in 3:ncol(response_df) ){
-  # setting output dir
+for (j in 1:ncol(response_df) ){
+  ### picking one response variable
   response_name = colnames(response_df)[j]
+  ### setting output dir
+  # check if output dir exists
+  dir_check = dir.exists(paths=paste("3_comparative_analyses/PGLS/", response_name, sep="") )
+  # create output dir if not created yet
+  if (dir_check == FALSE){
+    dir.create(path= paste("3_comparative_analyses/PGLS/", response_name, sep=""), showWarnings = , recursive = FALSE, mode = "0777")
+  }
+  # ouput dir
   out_dir = paste("3_comparative_analyses/PGLS/", response_name, sep="")
-  # setting result objects
+  ### setting result objects
   best_evo_model = c("model", "aicc")
   intercept = c()
   angular = c()
@@ -68,7 +84,7 @@ for (j in 3:ncol(response_df) ){
   shapiro_w = c()
   shapiro_p = c()
   r2 = c()
-  # applying leave-one-out
+  ### applying leave-one-out
   for (i in 1:nrow(response_df)){
     # droping n observatio in the predictor
     iter_predictor = predictor[-i]
@@ -77,9 +93,7 @@ for (j in 3:ncol(response_df) ){
     iter_names = naming_vector[-i]
     names(iter_response) = iter_names
     # need transformation?
-    if (response_name %in% log_these){
-      iter_response = log(iter_response)
-    }
+    if (response_name %in% log_these){iter_response = log(iter_response)}
     # initial values 
     init_bm = sd(iter_response)
     init_ou = mean(iter_response) - min(iter_response)
@@ -108,17 +122,17 @@ for (j in 3:ncol(response_df) ){
     # taking coefficients and test
     gls_test_table = summary_gls$tTable
     intercept = c(intercept, summary_gls$coefficients[1])
-    angular = c(angular, summary_gls$coefficients[2])
+    angular = rbind(angular, summary_gls$coefficients[-1])
     t_value = c(t_value, gls_test_table[,3][2])
-    p_value = c(p_value, gls_test_table[,4][2])
+    p_value = rbind(p_value, gls_test_table[,4])
     # checking residuals
-    res = resid(fit_gls)[1:length(iter_predictor)]
+    res = resid(fit_gls)[1:length(iter_response)]
     shapiro = shapiro.test(res)
     shapiro_w = c(shapiro_w, shapiro$statistic)
     shapiro_p = c(shapiro_p, shapiro$p.value)
     # calculating R model fit
     ssr = sum(res^2)
-    sst =  sum((response- mean(response))^2)
+    sst =  sum((iter_response- mean(iter_response))^2)
     r2 = c(r2, c(1 - (ssr/sst)) )
     print(paste("round:", as.character(i)))
     }
@@ -192,6 +206,9 @@ for (i in 1:n_phylo){
 
 ################### fitting evolutionary models to traits over trees ################
 
+### create directory for ouwie models
+dir.create(path= "3_comparative_analyses/OUWIE", showWarnings = , recursive = FALSE, mode = "0777")
+
 ### model fitting and selection functions
 source("function_fit_evo_models.R")
 source("function_choose_best.R")
@@ -211,6 +228,13 @@ for (j in 1:ncol(trait_df)){
   trait_name = colnames(trait_df)[j]
   spp_trait_regimes = data.frame(species, regime, trait)
   ### setting output dir
+  # check if output dir exists
+  dir_check = dir.exists(paths=paste("3_comparative_analyses/OUWIE/",trait_name, sep="") )
+  # create output dir if not created yet
+  if (dir_check == FALSE){
+    dir.create(path= paste("3_comparative_analyses/OUWIE/",trait_name, sep=""), showWarnings = , recursive = FALSE, mode = "0777")
+  }
+  # output dir
   out_dir = paste("3_comparative_analyses/OUWIE/",trait_name, sep="")
   ### setting result objects
   all_best_models = data.frame(matrix(NA, nrow= n_phylo, ncol=4))
@@ -225,6 +249,9 @@ for (j in 1:ncol(trait_df)){
     # DEC ancestral states
     dec_fn = paste("3_comparative_analyses/DEC_ancestral_reconstructions/anc_node_states_", as.character(i), sep="")
     anc_node_states = read.table(dec_fn, sep=",", h=T)
+    # replacing 'AFother' per 'other'
+    anc_node_states$state[anc_node_states$state == "AFother"] = "other"
+    # setting ancestral states into phylogenetic tree
     tr$node.label = anc_node_states$state
     # fitting evolutionary models
     all_fits = fit_evo_models(tree=tr, regimes=spp_trait_regimes, models_to_fit = all_models)
@@ -251,11 +278,23 @@ for (j in 1:ncol(trait_df)){
 
 ############################## describing best-fit model #########################
 
+### laoding libraries
+library(tidyverse)
+library(PupillometryR)
+library(ggpubr)
+library(readr)
+library(tidyr)
+library(ggplot2)
+library(Hmisc)
+library(plyr)
+library(RColorBrewer)
+library(reshape2)
+
 ### listing traits 
 trait_names = list.files("3_comparative_analyses/OUWIE")
 
 # my colors
-mycols = c( "#1E88E5", "#FFC107", "#D81B60")
+mycols = c( "#1E88E5", "#D81B60")
 
 ### loop over all traits
 for (trait_name in trait_names){
@@ -280,6 +319,7 @@ for (trait_name in trait_names){
   } else {
     for (j in 1:ncol(sigma_sq_df)){ sigma_sq = c(sigma_sq, sigma_sq_df[,j]) }
   }
+  sigma_sq = as.numeric(sigma_sq)
   sigma = sqrt(sigma_sq)
   # take theta
   theta_df = model_estimates[,which(colnames(model_estimates) %in% c("theta_1","theta_2", "theta_3"))]
@@ -298,7 +338,7 @@ for (trait_name in trait_names){
     for (j in 1:ncol(alpha_df)){ alpha = c(alpha, alpha_df[,j]) }
   }
   # state
-  state = c(rep("AF", n_rows), rep("AFother", n_rows), rep("other", n_rows))
+  state = c(rep("AF", n_rows), rep("other", n_rows))
   # organize into dataframe
   estimates_df = data.frame(state, sigma, theta, alpha)
   ### describing parameter estimates
@@ -327,7 +367,7 @@ for (trait_name in trait_names){
       scale_fill_manual(values=mycols)+
       scale_colour_manual(values=mycols)+
       xlab("geographic distribution")+ ylab(param_name)+
-      scale_x_discrete(labels=c("AF" = "AF-endemic", "AFother" = "AF and other\ndomains", "other" = "outside AF")) +
+      scale_x_discrete(labels=c("AF" = "AF-endemic", "other" = "non-endemic")) +
       theme(panel.background=element_rect(fill="white"), panel.grid=element_line(colour=NULL), panel.border=element_rect(fill=NA,colour="black"), axis.title=element_text(size=10,face="bold"), axis.text=element_text(size=6), legend.position = "none") 
    # export plot
     tiff(paste(dir, "/",param_name, ".tiff", sep=""), units="in", width=2.5, height=2, res=600)
