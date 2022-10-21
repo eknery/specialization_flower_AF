@@ -8,12 +8,12 @@ library(hypervolume)
 library(dismo)
 
 ### load flower pc scores
-flower_pc_df = read.table("1_flower_analyses/flower_pc_df.csv", sep=",", h=T)
+center_flower_df = read.table("1_flower_analyses/center_flower_df.csv", sep=",", h=T)
 # sampled species
-sampled_species = flower_pc_df$species
+sampled_species = center_flower_df$species
 # geographic data
-geo_states = flower_pc_df$state
-names(geo_states) = flower_pc_df$species
+geo_state = center_flower_df$state
+names(geo_state) = center_flower_df$species
 
 ### loading spp coordinates
 spp_points=read.table("0_data/spp_points_7km.csv", header =T, sep=",",  na.strings = "NA", fill=T)
@@ -247,7 +247,7 @@ for (n in 1:n_phylos){
 sister_no_metrics = c()
 for (n in 1:n_phylos ){ 
   sister_hv_comparison = read.table(paste("2_hypervolume_inference/sister_hv_comparisons/sister_hv_comparison_", as.character(n), ".csv", sep=""), sep=',', h=T)
-  geo_groups = split(sister_hv_comparison, geo_states)
+  geo_groups = split(sister_hv_comparison, geo_state)
   for (i in 1:length(geo_groups) ){
     group_name = names(geo_groups)[i]
     one_group = geo_groups[[i]]
@@ -280,11 +280,15 @@ sister_no_metrics = read.table("2_hypervolume_inference/sister_no_metrics.csv", 
 ### summarizing metrics 
 means = aggregate(sister_no_metrics$angular_no, by = list(sister_no_metrics$state), mean )
 sds = aggregate(sister_no_metrics$angular_no, by = list(sister_no_metrics$state), sd )
+summary_no_group = cbind(means, sds[,2])
+colnames(summary_no_group) = c("state", "mean", "sd")
+# export
+write.table(summary_no_group, "2_hypervolume_inference/summary_no_group.csv", sep=',', row.names=F, quote=F)
 
 ### permutation test
 # set comparison
-i = 2
-j = 3
+i = 1
+j = 2
 diff = means$x[i] -  means$x[j]
 # random comparisons
 iterations = 1000
@@ -313,8 +317,8 @@ library(ggplot2)
 
 ### graphical parameters
 # my colors
-mycols = c( "#1E88E5", "#FFC107", "#D81B60")
-names(mycols) = c("AF", "AFother", "other")
+mycols = c( "#1E88E5", "#D81B60")
+names(mycols) = c("AF", "other")
 # text size
 axis_title_size = 10
 x_text_size = 8
@@ -327,6 +331,6 @@ ggplot(data= sister_no_metrics, aes(x=state, y=angular_no, fill= state)) +
   scale_fill_manual(values=mycols)+
   scale_colour_manual(values=mycols)+
   xlab("geographic distribution")+ ylab("angular NO")+
-  scale_x_discrete(labels=c("AF" = "AF-endemic", "AFother" = "AF and other", "other" = "outside AF"))+
+  scale_x_discrete(labels=c("AF" = "AF-endemic", "other" = "non-endemic"))+
   theme(panel.background=element_rect(fill="white"), panel.grid=element_line(colour=NULL),panel.border=element_rect(fill=NA,colour="black"),axis.title=element_text(size=axis_title_size,face="bold"),axis.text.x=element_text(size=x_text_size),axis.text.y = element_text(angle = 90),legend.position = "none")
 dev.off()

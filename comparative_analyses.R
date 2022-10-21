@@ -52,7 +52,7 @@ phylo = mcc_phylo
 predictor = geo_state
 
 # set dataframe with response variables
-response_df = data.frame(flower_proxy[,-c(1,2)])
+response_df = data.frame(altitude)
 naming_vector = flower_proxy$species
 
 ### on the relationship
@@ -278,7 +278,7 @@ for (j in 1:ncol(trait_df)){
 
 ############################## describing best-fit model #########################
 
-### laoding libraries
+### loading libraries
 library(tidyverse)
 library(PupillometryR)
 library(ggpubr)
@@ -307,6 +307,9 @@ for (trait_name in trait_names){
   best_fit_count = table(all_best_models$model)
   max_count = max(best_fit_count)
   best_model = best_fit_count[best_fit_count == max_count]
+  #
+  write.table(best_fit_count, paste(dir,"/best_model_count.csv", sep=""), sep=",", quote=F, row.names=F) 
+  
   best_model_name = names(best_model)
   ### retrieve best estimates
   model_estimates = best_estimates[all_best_models$model == best_model_name,]
