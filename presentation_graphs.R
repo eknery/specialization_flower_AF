@@ -27,6 +27,9 @@ n_inner_nodes = tr$Nnode
 ### load flower pc scores
 center_flower_df = read.table("1_flower_analyses/center_flower_df.csv", sep=",", h=T)
 
+# sampled species
+sampled_species = center_flower_df$species
+
 # geographic state
 state = center_flower_df$state
 
@@ -69,8 +72,15 @@ BioGeoBEARS_run_object$trfn = trfn
 res_DEC = bears_optim_run(BioGeoBEARS_run_object)
 # node marginal ML
 relprobs_matrix = res_DEC$ML_marginal_prob_each_state_at_branch_top_AT_node
+colnames(relprobs_matrix) =c("AF", "other", "AFother")
+
+write.table(relprobs_matrix,"4_presentation_graphs/relprobs_matrix.csv", sep=",", quote=F, row.names=F)
 
 ################### plotting phylogenetic reconstruction and tratis #############
+
+### loading relative probabilities at notes
+relprobs_matrix = read.table("4_presentation_graphs/relprobs_matrix.csv", sep=",", h=T)
+
 ### setting states
 # tip states probs
 tip_states_probs = relprobs_matrix [1:n_tips, ]

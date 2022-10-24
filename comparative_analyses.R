@@ -21,27 +21,20 @@ sampled_species = center_flower_df$species
 geo_state = center_flower_df$state
 names(geo_state) = center_flower_df$species
 
-### load species' occupied elevation
-spp_altitude = read.table("2_hypervolume_inference/spp_altitude.csv", sep=",", h=T)
-# sampled indexes
-index_sampled = which(spp_altitude$species %in% sampled_species)
-altitude = spp_altitude$altitude[index_sampled ]
-names(altitude) = spp_altitude$species[index_sampled]
-
 ### load mcc phylogeentic tree
-mcc_phylo = read.tree("3_comparative_analyses/pruned_mcc_phylo.nwk")
+mcc_phylo = read.tree("2_comparative_analyses/pruned_mcc_phylo.nwk")
 
 ### counting pruned phylognetic trees
-n_phylo = length(list.files("3_comparative_analyses/pruned_phylos"))
+n_phylo = length(list.files("2_comparative_analyses/pruned_phylos"))
 
 ############################### fitting pgls models ###########################
 
 ### create directory for pgls models
 # check if dir exists
-dir_check = dir.exists(paths="3_comparative_analyses/PGLS")
+dir_check = dir.exists(paths="2_comparative_analyses/PGLS")
 # create dir if not created yet
 if (dir_check == FALSE){
-  dir.create(path= "3_comparative_analyses/PGLS", showWarnings = , recursive = FALSE, mode = "0777")
+  dir.create(path= "2_comparative_analyses/PGLS", showWarnings = , recursive = FALSE, mode = "0777")
 }
 
 ### setting common variables
@@ -52,7 +45,7 @@ phylo = mcc_phylo
 predictor = geo_state
 
 # set dataframe with response variables
-response_df = data.frame(altitude)
+response_df = data.frame(flower_proxy[,-c(1:2)])
 naming_vector = flower_proxy$species
 
 ### on the relationship
@@ -61,20 +54,20 @@ naming_vector = flower_proxy$species
 #pore_size = log
 #sitgma_size = log
 
-log_these = c("altitude", "pore_size", "sitgma_size")
+log_these = c( "pore_size", "sitgma_size")
 
 for (j in 1:ncol(response_df) ){
   ### picking one response variable
   response_name = colnames(response_df)[j]
   ### setting output dir
   # check if output dir exists
-  dir_check = dir.exists(paths=paste("3_comparative_analyses/PGLS/", response_name, sep="") )
+  dir_check = dir.exists(paths=paste("2_comparative_analyses/PGLS/", response_name, sep="") )
   # create output dir if not created yet
   if (dir_check == FALSE){
-    dir.create(path= paste("3_comparative_analyses/PGLS/", response_name, sep=""), showWarnings = , recursive = FALSE, mode = "0777")
+    dir.create(path= paste("2_comparative_analyses/PGLS/", response_name, sep=""), showWarnings = , recursive = FALSE, mode = "0777")
   }
   # ouput dir
-  out_dir = paste("3_comparative_analyses/PGLS/", response_name, sep="")
+  out_dir = paste("2_comparative_analyses/PGLS/", response_name, sep="")
   ### setting result objects
   best_evo_model = c("model", "aicc")
   intercept = c()
@@ -183,7 +176,7 @@ BioGeoBEARS_run_object$calc_ancprobs = TRUE    # get ancestral states from optim
 #### DEC over trees 
 for (i in 1:n_phylo){ 
   # phylogeny tree location
-  trfn = paste("3_comparative_analyses/pruned_phylos/pruned_phylo_", as.character(i), sep="")
+  trfn = paste("2_comparative_analyses/pruned_phylos/pruned_phylo_", as.character(i), sep="")
   tr = read.tree(trfn)
   # n tips and nodes
   n_tips = Ntip(tr)
@@ -201,13 +194,13 @@ for (i in 1:n_phylo){
   anc_node = (n_tips+1):(n_tips+n_nodes)
   state = node_states[anc_node]
   anc_node_states = data.frame(anc_node, state)
-  write.table(anc_node_states , paste("3_comparative_analyses/DEC_ancestral_reconstructions/anc_node_states",as.character(i), sep="_"), sep=",", row.names=F, quote=F)
+  write.table(anc_node_states , paste("2_comparative_analyses/DEC_ancestral_reconstructions/anc_node_states",as.character(i), sep="_"), sep=",", row.names=F, quote=F)
 }
 
 ################### fitting evolutionary models to traits over trees ################
 
 ### create directory for ouwie models
-dir.create(path= "3_comparative_analyses/OUWIE", showWarnings = , recursive = FALSE, mode = "0777")
+dir.create(path= "2_comparative_analyses/OUWIE", showWarnings = , recursive = FALSE, mode = "0777")
 
 ### model fitting and selection functions
 source("function_fit_evo_models.R")
@@ -229,13 +222,13 @@ for (j in 1:ncol(trait_df)){
   spp_trait_regimes = data.frame(species, regime, trait)
   ### setting output dir
   # check if output dir exists
-  dir_check = dir.exists(paths=paste("3_comparative_analyses/OUWIE/",trait_name, sep="") )
+  dir_check = dir.exists(paths=paste("2_comparative_analyses/OUWIE/",trait_name, sep="") )
   # create output dir if not created yet
   if (dir_check == FALSE){
-    dir.create(path= paste("3_comparative_analyses/OUWIE/",trait_name, sep=""), showWarnings = , recursive = FALSE, mode = "0777")
+    dir.create(path= paste("2_comparative_analyses/OUWIE/",trait_name, sep=""), showWarnings = , recursive = FALSE, mode = "0777")
   }
   # output dir
-  out_dir = paste("3_comparative_analyses/OUWIE/",trait_name, sep="")
+  out_dir = paste("2_comparative_analyses/OUWIE/",trait_name, sep="")
   ### setting result objects
   all_best_models = data.frame(matrix(NA, nrow= n_phylo, ncol=4))
   colnames(all_best_models) = c(c("model","llik","aicc","delta_aicc"))
@@ -244,10 +237,10 @@ for (j in 1:ncol(trait_df)){
   ### fitting all models to all phylogenetic trees
   for (i in 1:n_phylo){ 
     # phylogenetic tree
-    tr_fn = paste("3_comparative_analyses/pruned_phylos/pruned_phylo_", as.character(i), sep="")
+    tr_fn = paste("2_comparative_analyses/pruned_phylos/pruned_phylo_", as.character(i), sep="")
     tr = read.tree(tr_fn)
     # DEC ancestral states
-    dec_fn = paste("3_comparative_analyses/DEC_ancestral_reconstructions/anc_node_states_", as.character(i), sep="")
+    dec_fn = paste("2_comparative_analyses/DEC_ancestral_reconstructions/anc_node_states_", as.character(i), sep="")
     anc_node_states = read.table(dec_fn, sep=",", h=T)
     # replacing 'AFother' per 'other'
     anc_node_states$state[anc_node_states$state == "AFother"] = "other"
@@ -291,7 +284,7 @@ library(RColorBrewer)
 library(reshape2)
 
 ### listing traits 
-trait_names = list.files("3_comparative_analyses/OUWIE")
+trait_names = list.files("2_comparative_analyses/OUWIE")
 
 # my colors
 mycols = c( "#1E88E5", "#D81B60")
@@ -299,7 +292,7 @@ mycols = c( "#1E88E5", "#D81B60")
 ### loop over all traits
 for (trait_name in trait_names){
   ### setting output dir
-  dir = paste("3_comparative_analyses/OUWIE/",trait_name, sep="")
+  dir = paste("2_comparative_analyses/OUWIE/",trait_name, sep="")
   ### load model fit and estimates
   all_best_models = read.table(paste(dir,"/best_models.csv", sep=""), sep=",", h=T)
   best_estimates = read.table(paste(dir,"/best_estimates.csv", sep=""), sep=",", h=T)

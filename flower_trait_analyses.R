@@ -106,11 +106,16 @@ geo_disper = aggregate(center_flower_df[,-c(1,2)], by=list(center_flower_df$samp
 # name
 colnames(center_flower_df)[1:2] = c("state", "species")
 # exporting
-write.table(center_flower_df, paste(getwd(), "1_flower_analyses/center_flower_df.csv", sep="/"), sep=",", quote=F, row.names=F, col.names=T)
-write.table(geo_center, paste(getwd(), "1_flower_analyses/trait_center_per_geography.csv", sep="/"), sep=",", quote=F, row.names=F, col.names=T)
-write.table(geo_disper, paste(getwd(), "1_flower_analyses/trait_dispersion_per_geography.csv", sep="/"), sep=",", quote=F, row.names=F, col.names=T)
+write.table(center_flower_df, "1_flower_analyses/center_flower_df.csv", sep=",", quote=F, row.names=F, col.names=T)
+write.table(geo_center, "1_flower_analyses/trait_center_per_geography.csv", sep=",", quote=F, row.names=F, col.names=T)
+write.table(geo_disper,"1_flower_analyses/trait_dispersion_per_geography.csv", sep=",", quote=F, row.names=F, col.names=T)
 
-### plotting traits by geography
+######################## plotting traits by geography #######################
+
+### loading species' flower traits
+center_flower_df= read.table("1_flower_analyses/center_flower_df.csv", sep=",", h=T)
+
+### plotting
 # my colors
 mycols = c( "#1E88E5","#D81B60")
 # plot list
