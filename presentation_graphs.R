@@ -17,7 +17,7 @@ if (dir_check == FALSE){
 }
 
 ### phylogenetic tree location
-trfn ="3_comparative_analyses/pruned_mcc_phylo.nwk"
+trfn ="2_comparative_analyses/pruned_mcc_phylo.nwk"
 tr = read.tree(trfn)
 
 # n tips and nodes
@@ -32,14 +32,6 @@ sampled_species = center_flower_df$species
 
 # geographic state
 state = center_flower_df$state
-
-### load species' occupied elevation
-spp_altitude = read.table("2_hypervolume_inference/spp_altitude.csv", sep=",", h=T)
-# sampled indexes
-index_sampled = which(spp_altitude$species %in% sampled_species)
-altitude = spp_altitude$altitude[index_sampled ]
-names(altitude) = spp_altitude$species[index_sampled]
-
 
 ############################### fitting DEC #################################
 # reading range data
@@ -89,43 +81,35 @@ inner_node_probs = relprobs_matrix [(1+n_tips):(n_tips+n_inner_nodes),]
 # state colors
 state_cols=c( "#1E88E5","#D81B60", "#eb4683")
 names(state_cols)=c("AF",  "other", "AFother")
+# bar colrors
+bar_colors = c()
+for (i in 1:n_tips){
+  bool = relprobs_matrix [i, ] == 1
+  one_col =c("#1E88E5","#D81B60", "#eb4683")[bool]
+  bar_colors = c(bar_colors, one_col)
+}
+names(bar_colors) = tr$tip.label
 
-tiff("4_presentation_graphs/dec_mcc_ranges.tiff", units="in", width=4, height=6, res=600)
+### trait vectors
+trait= center_flower_df$stigma_size
+
+range(trait)
+
+names(trait) = center_flower_df$species
+
+tiff("4_presentation_graphs/dec_mcc_ranges_3.tiff", units="in", width=3, height=6, res=600)
   plotTree(tree=tr,fsize=0.75, ftype="i")
-  tiplabels(pie=tip_states_probs, piecol=state_cols, cex=0.4)
-  nodelabels(node=(1+n_tips):(n_tips+n_inner_nodes), pie= inner_node_probs, piecol=state_cols, cex=0.8)
+  tiplabels(pie=tip_states_probs, piecol=state_cols, cex=0.75)
+  nodelabels(node=(1+n_tips):(n_tips+n_inner_nodes), pie= inner_node_probs, piecol=state_cols, cex=1.5)
   axisPhylo(pos=c(0.5), font=3, cex.axis=0.5)
 dev.off()
 
-########################## plotting spatial features ##########################
-
-### loading libraries
-library(tidyverse)
-library(PupillometryR)
-library(ggpubr)
-library(readr)
-library(tidyr)
-library(ggplot2)
-library(Hmisc)
-library(plyr)
-library(RColorBrewer)
-library(reshape2)
-
-### my colors
-mycols = c( "#1E88E5", "#D81B60")
-
-### creating a altitude dataframe
-alt_df = data.frame(state, altitude)
-
-# plot
-tiff("4_presentation_graphs/altitude_per_geography.tiff", units="in", width=2, height=2, res=600)
-ggplot(data= alt_df, aes(x=state, y=altitude, fill=state)) +
-  geom_point(aes(color=state),position = position_jitter(width = 0.07), size = 1, alpha = 0.65) +
-  geom_boxplot(width = 0.4, outlier.shape = NA, alpha = 0.25)+
-  geom_flat_violin(position = position_nudge(x = 0.25, y = 0), alpha = 0.25) +
-  scale_fill_manual(values=mycols)+
-  scale_colour_manual(values=mycols)+
-  xlab("geographic distribution")+ ylab("altitude (m)")+
-  scale_x_discrete(labels=c("AF" = "AF-endemic", "other" = "non-endemic")) +
-  theme(panel.background=element_rect(fill="white"), panel.grid=element_line(colour=NULL), panel.border=element_rect(fill=NA,colour="black"), axis.title=element_text(size=8,face="bold"), axis.text=element_text(size=6), legend.position = "none") 
+tiff("4_presentation_graphs/tree.tiff", units="in", width=3.5, height=6, res=600)
+  plotTree.wBars(tree=tr, x=trait,fsize=0.75, col=bar_colors, scale=2, ftype="i", method="plotTree")
+  tiplabels(pie=tip_states_probs, piecol=state_cols, cex=0.5)
+  nodelabels(node=(1+n_tips):(n_tips+n_inner_nodes), pie= inner_node_probs, piecol=state_cols, cex=1)
+  axisPhylo(pos=c(0.5), font=3, cex.axis=0.5)
 dev.off()
+
+
+
