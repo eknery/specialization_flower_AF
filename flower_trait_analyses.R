@@ -13,7 +13,6 @@ library(reshape2)
 
 ### loading occurrence count per domain
 spp_count_domain = read.table("0_data/spp_count_domain.csv", h=T, sep=",")
-
 ## define geopraphic states 
 high_ths = 0.90
 low_ths = (1 - high_ths)
@@ -25,7 +24,6 @@ names(geo_state) = spp_count_domain$species
 
 ### loading all flower traits
 ftraits = read.table("0_data/flower_trait_matrix.csv", sep=",", h=T)
-
 ## selfing-diagnostic traits
 # flower size
 flower_size = ftraits$hypathium_height + ftraits$style_height

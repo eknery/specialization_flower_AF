@@ -26,65 +26,10 @@ ras1 = raster("0_data/rasters/temperature_diurnal_range")
 ras2 = raster("0_data/rasters/precipitation_seasonality")
 ras3 = raster("0_data/rasters/solar_radiation")
 ras4 = raster("0_data/rasters/soil_pH.gri")
-ras_alt = raster("0_data/rasters/altitude.gri")
 env_ras= stack(ras1,ras2,ras3,ras4)
 
 ### counting pruned phylognetic trees
 n_phylos = length(list.files("2_comparative_analyses/pruned_phylos"))
-
-################################# altitude analysis ###########################
-
-### altitude values per species
-# extarct values
-alt_values = raster::extract(ras_alt ,spp_points[,2:3])
-# center to species
-center_alt_values = aggregate(alt_values, by=list(spp_points$species), function(x){median(x, na.rm=T)} )
-# keep only species with sampled flowers
-spp_altitude = center_alt_values[center_alt_values$Group.1 %in% sampled_species,]
-# name columns
-colnames(spp_altitude) = c("species", "altitude")
-# add states
-spp_altitude = data.frame(state, spp_altitude)
-
-### testing altitude difference
-# difference per distribution
-means = aggregate(spp_altitude$altitude, by= list(spp_altitude$state), mean)
-means$x[1] - means$x[2]
-
-aggregate(spp_altitude$altitude, by= list(spp_altitude$state), sd)
-
-# source permutation test
-source("function_permutation_test.R")
-permutation_test(factor= spp_altitude$state, response= spp_altitude$altitude,iter=999, out_dir = "3_hypervolume_inference", name= "altitude.tiff")
-
-### plotting
-#libraries
-library(tidyverse)
-library(PupillometryR)
-library(ggpubr)
-library(readr)
-library(tidyr)
-library(ggplot2)
-# my colors
-mycols = c( "#1E88E5", "#D81B60")
-names(mycols) = c("AF", "other")
-# text size
-axis_title_size = 10
-x_text_size = 8
-# alttidue dataframe
-
-tiff("3_hypervolume_inference/altitude_per_distribution.tiff", units="in", width=3.5, height=3, res=600)
-ggplot(data= spp_altitude, aes(x=state, y=altitude, fill= state)) +
-  geom_point(aes(color=state),position = position_jitter(width = 0.07), size = 1.5, alpha = 0.25) +
-  geom_boxplot(width = 0.2, outlier.shape = NA, alpha = 0.25)+
-  geom_flat_violin(position = position_nudge(x = 0.12, y = 0), alpha = 0.25) +
-  scale_fill_manual(values=mycols)+
-  scale_colour_manual(values=mycols)+
-  xlab("geographic distribution")+ ylab("species' altitude (m)")+
-  scale_x_discrete(labels=c("AF" = "AF-endemic", "other" = "non-endemic"))+
-  theme(panel.background=element_rect(fill="white"), panel.grid=element_line(colour=NULL),panel.border=element_rect(fill=NA,colour="black"),axis.title=element_text(size=axis_title_size,face="bold"),axis.text.x=element_text(size=x_text_size),axis.text.y = element_text(angle = 90),legend.position = "none")
-dev.off()
-
 
 ################################## raster preparation ###########################
 

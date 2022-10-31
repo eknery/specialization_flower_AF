@@ -21,123 +21,35 @@ sampled_species = center_flower_df$species
 geo_state = center_flower_df$state
 names(geo_state) = center_flower_df$species
 
+### load species' altitude
+spp_altitude = read.table("3_hypervolume_inference/spp_altitude.csv")
+
 ### load mcc phylogeentic tree
 mcc_phylo = read.tree("2_comparative_analyses/pruned_mcc_phylo.nwk")
 
 ### counting pruned phylognetic trees
 n_phylo = length(list.files("2_comparative_analyses/pruned_phylos"))
 
-############################### fitting pgls models ###########################
-
-### create directory for pgls models
-# check if dir exists
-dir_check = dir.exists(paths="2_comparative_analyses/PGLS")
-# create dir if not created yet
-if (dir_check == FALSE){
-  dir.create(path= "2_comparative_analyses/PGLS", showWarnings = , recursive = FALSE, mode = "0777")
-}
-
-### setting common variables
-# choose phylogenetic tree
-phylo = mcc_phylo
-
-# set predictor variable
-predictor = geo_state
-
-# set dataframe with response variables
-response_df = data.frame(flower_proxy[,-c(1:2)])
-naming_vector = flower_proxy$species
-
-### on the relationship
-#flower_size = linear
-#herkogamy = linear
-#pore_size = log
-#sitgma_size = log
-
-log_these = c( "pore_size", "sitgma_size")
-
-for (j in 1:ncol(response_df) ){
-  ### picking one response variable
-  response_name = colnames(response_df)[j]
-  ### setting output dir
-  # check if output dir exists
-  dir_check = dir.exists(paths=paste("2_comparative_analyses/PGLS/", response_name, sep="") )
-  # create output dir if not created yet
-  if (dir_check == FALSE){
-    dir.create(path= paste("2_comparative_analyses/PGLS/", response_name, sep=""), showWarnings = , recursive = FALSE, mode = "0777")
-  }
-  # ouput dir
-  out_dir = paste("2_comparative_analyses/PGLS/", response_name, sep="")
-  ### setting result objects
-  best_evo_model = c("model", "aicc")
-  intercept = c()
-  angular = c()
-  t_value = c()
-  p_value = c()
-  shapiro_w = c()
-  shapiro_p = c()
-  r2 = c()
-  ### applying leave-one-out
-  for (i in 1:nrow(response_df)){
-    # droping n observatio in the predictor
-    iter_predictor = predictor[-i]
-    # selecting response variable
-    iter_response = response_df[-i,j]
-    iter_names = naming_vector[-i]
-    names(iter_response) = iter_names
-    # need transformation?
-    if (response_name %in% log_these){iter_response = log(iter_response)}
-    # initial values 
-    init_bm = sd(iter_response)
-    init_ou = mean(iter_response) - min(iter_response)
-    # drop species from phylogenetic tree
-    to_drop = naming_vector[i]
-    iter_phylo = drop.tip(phylo, to_drop)
-    # fitting models to flower traits
-    fit_bm = fitContinuous(phy= iter_phylo, iter_response,  model="BM")
-    fit_ou = fitContinuous(phy= iter_phylo, iter_response,  model="OU")
-    # chosing best-fit model for response variable by aicc
-    if (fit_bm$opt$aicc < fit_ou$opt$aicc){
-      cor_mtx = corBrownian(value=init_bm, phy= iter_phylo, form=~iter_names)
-      best_evo_model = rbind(best_evo_model, c("BM", fit_bm$opt$aicc))
-    } else {
-      if (fit_bm$opt$aicc - fit_ou$opt$aicc < 2){
-        cor_mtx = corBrownian(value=init_bm, phy= iter_phylo, form=~iter_names)
-        best_evo_model = rbind(best_evo_model, c("BM", fit_bm$opt$aicc))
-      } else {
-        cor_mtx = corMartins(value= init_ou, phy = iter_phylo, fixed = T, form=~iter_names)
-        best_evo_model = rbind(best_evo_model, c("OU", fit_ou$opt$aicc))
-      }
-    }
-    # fitting pgls
-    fit_gls = gls(iter_response ~ iter_predictor, correlation=cor_mtx,  method = "REML")
-    summary_gls = summary(fit_gls)
-    # taking coefficients and test
-    gls_test_table = summary_gls$tTable
-    intercept = c(intercept, summary_gls$coefficients[1])
-    angular = rbind(angular, summary_gls$coefficients[-1])
-    t_value = c(t_value, gls_test_table[,3][2])
-    p_value = rbind(p_value, gls_test_table[,4])
-    # checking residuals
-    res = resid(fit_gls)[1:length(iter_response)]
-    shapiro = shapiro.test(res)
-    shapiro_w = c(shapiro_w, shapiro$statistic)
-    shapiro_p = c(shapiro_p, shapiro$p.value)
-    # calculating R model fit
-    ssr = sum(res^2)
-    sst =  sum((iter_response- mean(iter_response))^2)
-    r2 = c(r2, c(1 - (ssr/sst)) )
-    print(paste("round:", as.character(i)))
-    }
-  print(paste("response done:", response_name))
-  # organizing model evalution and pgls fit
-  pgls_stats = data.frame(intercept, angular, t_value, p_value, r2, shapiro_w, shapiro_p)
-  # exporting
-  write.table(best_evo_model, paste(out_dir,"/best_evo_model.csv", sep=""), row.names=F, quote=F, sep=",")
-  write.table(pgls_stats, paste(out_dir,"/pgls_stats.csv", sep=""), row.names=F, quote=F, sep=",")
-}
+### plottinglibraries
+library(tidyverse)
+library(PupillometryR)
+library(ggpubr)
+library(readr)
+library(tidyr)
+library(ggplot2)
+# my colors
+mycols = c( "#1E88E5", "#D81B60")
+names(mycols) = c("AF", "other")
 
 ############################## biogeographic reconstruction ###################
+
+### create directory for DEC results
+# check if dir exists
+dir_check = dir.exists(paths="2_comparative_analyses/DEC_ancestral_reconstructions")
+# create dir if not created yet
+if (dir_check == FALSE){
+  dir.create(path= "2_comparative_analyses/DEC_ancestral_reconstructions", showWarnings = , recursive = FALSE, mode = "0777")
+}
 
 # reading range data
 geog_fn = ("0_data/spp_distribution_af.data")
@@ -196,6 +108,133 @@ for (i in 1:n_phylo){
   anc_node_states = data.frame(anc_node, state)
   write.table(anc_node_states , paste("2_comparative_analyses/DEC_ancestral_reconstructions/anc_node_states",as.character(i), sep="_"), sep=",", row.names=F, quote=F)
 }
+
+################################# current altitude analysis ###########################
+
+### load packages
+library(raster)
+library(sp)
+library(sf)
+
+### load altitude raster
+ras_alt = raster("0_data/rasters/altitude.gri")
+
+### altitude values per species
+# extarct values
+alt_values = raster::extract(ras_alt ,spp_points[,2:3])
+# center to species
+center_alt_values = aggregate(alt_values, by=list(spp_points$species), function(x){median(x, na.rm=T)} )
+# keep only species with sampled flowers
+spp_altitude = center_alt_values[center_alt_values$Group.1 %in% sampled_species,]
+# name columns
+colnames(spp_altitude) = c("species", "altitude")
+# add states
+spp_altitude = data.frame(state, spp_altitude)
+# export
+write.table(spp_altitude, "2_comparative_analyses/spp_altitude.csv", sep=",", row.names= F, quote = F)
+
+### testing altitude difference
+# difference per distribution
+means = aggregate(spp_altitude$altitude, by= list(spp_altitude$state), mean)
+means$x[1] - means$x[2]
+aggregate(spp_altitude$altitude, by= list(spp_altitude$state), sd)
+
+# source permutation test
+source("function_permutation_test.R")
+permutation_test(factor= spp_altitude$state, response= spp_altitude$altitude,iter=999, out_dir = "2_comparative_analyses", name= "altitude.tiff")
+
+### plotting
+# text size
+axis_title_size = 10
+x_text_size = 8
+# plot
+tiff("2_comparative_analyses/altitude_per_distribution.tiff", units="in", width=3.5, height=3, res=600)
+ggplot(data= spp_altitude, aes(x=state, y=altitude, fill= state)) +
+  geom_point(aes(color=state),position = position_jitter(width = 0.07), size = 1.5, alpha = 0.25) +
+  geom_boxplot(width = 0.2, outlier.shape = NA, alpha = 0.25)+
+  geom_flat_violin(position = position_nudge(x = 0.12, y = 0), alpha = 0.25) +
+  scale_fill_manual(values=mycols)+
+  scale_colour_manual(values=mycols)+
+  xlab("geographic distribution")+ ylab("species' elevation (m)")+
+  scale_x_discrete(labels=c("AF" = "AF-endemic", "other" = "non-endemic"))+
+  theme(panel.background=element_rect(fill="white"), panel.grid=element_line(colour=NULL),panel.border=element_rect(fill=NA,colour="black"),axis.title=element_text(size=axis_title_size,face="bold"),axis.text.x=element_text(size=x_text_size),axis.text.y = element_text(angle = 90),legend.position = "none")
+dev.off()
+
+####################### ancestral reconstruction of altitude ###################
+
+### load species' altitude
+spp_altitude = read.table("2_comparative_analyses/spp_altitude.csv", sep=",", h=T)
+# altitude vector
+altitude = spp_altitude$altitude
+names(altitude) = spp_altitude$species
+
+### acestral reconstruction over trees
+anc_data = c()
+for (i in 1:n_phylo){ 
+  # phylogeny tree location
+  trfn = paste("2_comparative_analyses/pruned_phylos/pruned_phylo_", as.character(i), sep="")
+  tr = read.tree(trfn)
+  # n tips and nodes
+  n_tips = Ntip(tr)
+  n_nodes = tr$Nnode
+  # node ages
+  node_ages = round(node.depth.edgelength(tr),5)
+  present = round(max(node_ages), 5)
+  node_ages = node_ages - present
+  # ancestral node ages
+  anc_node_ages = node_ages[(n_tips+1):(n_tips+n_nodes)]
+  # ancestral biogeographic state
+  dec_fn = paste("2_comparative_analyses/DEC_ancestral_reconstructions/anc_node_states",as.character(i), sep="_")
+  anc_node_states = read.table(dec_fn, sep=",", h=T)
+  anc_node_states$state[anc_node_states$state == "AFother"] = "other"
+  # ancestral reconstruction of altitude
+  anc_altitude = as.numeric( fastAnc(tree = tr, x = altitude) )
+  # organizing into one dataframe
+  one_rec = data.frame(anc_node_states, anc_node_ages, anc_altitude)
+  # update!
+  anc_data = rbind(anc_data, one_rec)
+}
+
+### dividing into time intervals
+# time boundaries
+old_age = min(anc_data$anc_node_ages)
+new_age = round(max(anc_data$anc_node_ages), 3)
+# intervals
+intervals = anc_data$anc_node_ages
+breaks = seq(new_age, old_age, by= (old_age - new_age)/10)
+for (i in 1:length(breaks)){
+  intervals[which(anc_data$anc_node_ages > breaks[i+1] & anc_data$anc_node_ages < breaks[i])] = (breaks[i] + breaks[i+1])/2
+}
+anc_data = data.frame(anc_data, intervals)
+
+### summarizing reconstruction by state across intervals
+list_anc_data = split(anc_data, f= anc_data$state)
+all_summary_anc = data.frame()
+for (i in 1:length(list_anc_data)){
+  central = aggregate(list_anc_data[[i]]$anc_altitude, by= list(list_anc_data[[i]]$intervals), mean)
+  dispersion  = aggregate(list_anc_data[[i]]$anc_altitude, by= list(list_anc_data[[i]]$intervals), function(x){ 1.96 * sd(x)/sqrt(length(x)) })
+  state = rep(names(list_anc_data)[i], nrow(central) )
+  summary_anc = cbind(state, central, dispersion[,-1])
+  all_summary_anc = rbind(all_summary_anc, summary_anc)
+}
+colnames(all_summary_anc) = c("state", "age", "central", "dispersion")
+
+### plotting
+# text size
+axis_title_size = 10
+x_text_size = 8
+
+tiff("2_comparative_analyses/altitude_reconstruction.tiff", units="in", width=3.5, height=3, res=600)
+ggplot(data= all_summary_anc, aes(x=age, y=central, group= state, color=state) ) +
+  geom_point(size = 1, alpha = 1) +
+  geom_line(size=1)+
+  geom_errorbar(size=0.75, width=0, aes(ymin=central-dispersion, ymax=central+dispersion))+
+  scale_colour_manual(values=mycols)+
+  xlim(c(-12,-0.5))+
+  #scale_x_continuous(breaks=seq(-12,-1, by=1), labels=as.character(seq(-12,-1, by=1)) )+
+  xlab("time before present (m.y.a.)")+ ylab("species' elevation (m)")+
+  theme(panel.background=element_rect(fill="white"), panel.grid=element_line(colour=NULL),panel.border=element_rect(fill=NA,colour="black"),axis.title=element_text(size=axis_title_size,face="bold"),axis.text.x=element_text(size=x_text_size),axis.text.y = element_text(angle = 90),legend.position = "none")
+dev.off()
 
 ################### fitting evolutionary models to traits over trees ################
 
