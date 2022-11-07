@@ -153,3 +153,49 @@ for (i in 1:length(plot_list) ){
   dev.off()
 }
 
+############################## assessing allometry ############################
+
+### loading species' flower traits
+center_flower_df= read.table("1_flower_analyses/center_flower_df.csv", sep=",", h=T)
+
+### height by species
+center_height = aggregate(ftraits$plant_height, by=list(ftraits$species), function(x){median(x, na.rm = T) })
+
+### drop non-height species
+drop_it = which(is.na(center_height$x))
+height = center_height$x[-drop_it]
+flower = center_flower_df[-drop_it,]
+
+### test relationship
+# flower size
+trait_name = "pore_size"
+trait = flower[,trait_name]
+# boundaries
+bound = sd(trait)*1.96
+max_bound = mean(trait) + bound
+min_bound = mean(trait) - bound
+# remove outliers
+if(sum(trait > max_bound) != 0){
+  drop= which(trait > max_bound)
+  trait = trait[-drop]
+  height = height[-drop]
+}
+if(sum(trait < min_bound) != 0){
+  drop= which(trait < min_bound)
+  trait = trait[-drop]
+  height = height[-drop]
+}
+# fit model
+model = lm(trait ~ height)
+# test significance
+test_model = summary(model)
+r = round(test_model$r.squared, 2) # extract R square
+pvalue = round(test_model$coefficients[,4][2],4)
+# plot
+tiff(paste("1_flower_analyses/",trait_name, ".tiff", sep=""), units="in", width=3.5, height=4, res=600)
+  plot(x= height, y= trait, xlab= "height (m)", ylab= trait_name, col= "black")
+  abline(model)
+  text (x=6, y =0.4, labels = paste("R2: ",r))
+  text (x=6, y =0.35, labels = paste("p-value: ",pvalue))
+dev.off()
+
