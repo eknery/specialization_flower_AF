@@ -108,10 +108,26 @@ write.table(center_flower_df, "1_flower_analyses/center_flower_df.csv", sep=",",
 write.table(geo_center, "1_flower_analyses/trait_center_per_geography.csv", sep=",", quote=F, row.names=F, col.names=T)
 write.table(geo_disper,"1_flower_analyses/trait_dispersion_per_geography.csv", sep=",", quote=F, row.names=F, col.names=T)
 
-######################## plotting traits by geography #######################
+######################## floral traits by geography #######################
 
 ### loading species' flower traits
 center_flower_df= read.table("1_flower_analyses/center_flower_df.csv", sep=",", h=T)
+
+
+### testing differences
+# source function
+source("function_permutation_test.R")
+# set factor
+factor = center_flower_df$state
+# loop over traits
+all_pvalues = c()
+for(j in 3:ncol(center_flower_df)){
+  trait_name = colnames(center_flower_df)[j]
+  response = center_flower_df[,j]
+  pvalue = permutation_test(factor = factor, response = response, iter=999, out_dir="1_flower_analyses",  name= paste(trait_name, ".tiff", sep=""))
+  all_pvalues = c(all_pvalues, pvalue)
+}
+names(all_pvalues) = all_traits
 
 ### plotting
 # my colors

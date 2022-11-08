@@ -134,7 +134,7 @@ for (i in 1:length(all_perf_tables)){
   hv_performance = rbind(hv_performance, one_performance)
 }
 
-write.table(hv_performance, "2_hypervolume_inference/hv_performance.csv", sep=',', quote=F, row.names=F)
+write.table(hv_performance, "3_hypervolume_inference/hv_performance.csv", sep=',', quote=F, row.names=F)
 
 # mean performance by threshold
 mean_hv_performance = data.frame(matrix(0,nrow=1, ncol=6,))
@@ -150,12 +150,12 @@ for(sp_name in all_spp_names){
 
 mean_hv_performance = mean_hv_performance[-1,]
 colnames(mean_hv_performance)[2] = "threshold"
-write.table(mean_hv_performance, "2_hypervolume_inference/mean_hv_performance.csv", sep=',', quote=F, row.names=F)
+write.table(mean_hv_performance, "3_hypervolume_inference/mean_hv_performance.csv", sep=',', quote=F, row.names=F)
 
 ############################ fitting hypervolumes ######################
 
 # loading threshold values
-mean_hv_performance = read.table("2_hypervolume_inference/mean_hv_performance.csv", header =T, sep=",",  na.strings = "NA", fill=T)
+mean_hv_performance = read.table("3_hypervolume_inference/mean_hv_performance.csv", header =T, sep=",",  na.strings = "NA", fill=T)
 
 # getting best thresholds for each species
 best_ths = rep(NA, length(all_spp_names))
@@ -236,7 +236,7 @@ for (n in 1:n_phylos){
   sister_hv_comparison = data.frame(sampled_species, sister_hv_comparison, min_hv, sister_divergence)
   colnames(sister_hv_comparison) =c("species", "sp_hv", "sister_hv", "intersection", "union", "minimal_hv","divergence_time")
   #exporting
-  write.table(sister_hv_comparison, paste("2_hypervolume_inference/sister_hv_comparisons/sister_hv_comparison_", as.character(n), ".csv", sep="" ), sep=',', quote=F, row.names=F)
+  write.table(sister_hv_comparison, paste("3_hypervolume_inference/sister_hv_comparisons/sister_hv_comparison_", as.character(n), ".csv", sep="" ), sep=',', quote=F, row.names=F)
   # update me!
   print(paste("Time:", Sys.time(), "Loop iterarion:", as.character(n) ) )
 }
@@ -245,7 +245,7 @@ for (n in 1:n_phylos){
 
 sister_no_metrics = c()
 for (n in 1:n_phylos ){ 
-  sister_hv_comparison = read.table(paste("2_hypervolume_inference/sister_hv_comparisons/sister_hv_comparison_", as.character(n), ".csv", sep=""), sep=',', h=T)
+  sister_hv_comparison = read.table(paste("3_hypervolume_inference/sister_hv_comparisons/sister_hv_comparison_", as.character(n), ".csv", sep=""), sep=',', h=T)
   geo_groups = split(sister_hv_comparison, state)
   for (i in 1:length(geo_groups) ){
     group_name = names(geo_groups)[i]
@@ -270,11 +270,11 @@ sister_no_metrics$angular_no = as.numeric(sister_no_metrics$angular_no)
 str(sister_no_metrics)
 
 #exporting
-write.table(sister_no_metrics, "2_hypervolume_inference/sister_no_metrics.csv", sep=',', quote=F, row.names=F)
+write.table(sister_no_metrics, "3_hypervolume_inference/sister_no_metrics.csv", sep=',', quote=F, row.names=F)
 
 ############################## analyzing RO metrics ############################
 
-sister_no_metrics = read.table("2_hypervolume_inference/sister_no_metrics.csv", sep=',', h=T)
+sister_no_metrics = read.table("3_hypervolume_inference/sister_no_metrics.csv", sep=',', h=T)
 
 ### summarizing metrics 
 means = aggregate(sister_no_metrics$angular_no, by = list(sister_no_metrics$state), mean )
@@ -282,7 +282,7 @@ sds = aggregate(sister_no_metrics$angular_no, by = list(sister_no_metrics$state)
 summary_no_group = cbind(means, sds[,2])
 colnames(summary_no_group) = c("state", "mean", "sd")
 # export
-write.table(summary_no_group, "2_hypervolume_inference/summary_no_group.csv", sep=',', row.names=F, quote=F)
+write.table(summary_no_group, "3_hypervolume_inference/summary_no_group.csv", sep=',', row.names=F, quote=F)
 
 ### permutation test
 # set comparison
@@ -322,14 +322,14 @@ names(mycols) = c("AF", "other")
 axis_title_size = 10
 x_text_size = 8
 
-tiff("2_hypervolume_inference/angular_no_per_distribution.tiff", units="in", width=3.5, height=3, res=600)
+tiff("3_hypervolume_inference/no_slope_per_distribution.tiff", units="in", width=3.5, height=3, res=600)
 ggplot(data= sister_no_metrics, aes(x=state, y=angular_no, fill= state)) +
   geom_point(aes(color=state),position = position_jitter(width = 0.07), size = 1.5, alpha = 0.25) +
   geom_boxplot(width = 0.2, outlier.shape = NA, alpha = 0.25)+
   geom_flat_violin(position = position_nudge(x = 0.12, y = 0), alpha = 0.25) +
   scale_fill_manual(values=mycols)+
   scale_colour_manual(values=mycols)+
-  xlab("geographic distribution")+ ylab("angular NO")+
+  xlab("geographic distribution")+ ylab("NO slope")+
   scale_x_discrete(labels=c("AF" = "AF-endemic", "other" = "non-endemic"))+
   theme(panel.background=element_rect(fill="white"), panel.grid=element_line(colour=NULL),panel.border=element_rect(fill=NA,colour="black"),axis.title=element_text(size=axis_title_size,face="bold"),axis.text.x=element_text(size=x_text_size),axis.text.y = element_text(angle = 90),legend.position = "none")
 dev.off()
