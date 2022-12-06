@@ -253,9 +253,9 @@ trait_df = flower_proxy[,-c(1:2)]
 max_param_num = length(unique(regime))*4
 
 ### loop over all traits
-for (j in 1:ncol(trait_df)){
+for (j in 1:ncol(trait_df)){ # 
   ### choose trait
-  trait = trait_df[,j]
+  trait = trait_df[,j] ## j !
   trait_name = colnames(trait_df)[j]
   spp_trait_regimes = data.frame(species, regime, trait)
   ### setting output dir
@@ -322,13 +322,13 @@ library(RColorBrewer)
 library(reshape2)
 
 ### listing traits 
-trait_names = list.files("2_comparative_analyses/OUWIE")
+all_trait_names = list.files("2_comparative_analyses/OUWIE")
 
 # my colors
 mycols = c( "#1E88E5", "#D81B60")
 
 ### loop over all traits
-for (trait_name in trait_names){
+for (trait_name in all_trait_names){
   ### setting output dir
   dir = paste("2_comparative_analyses/OUWIE/",trait_name, sep="")
   ### load model fit and estimates
@@ -338,10 +338,9 @@ for (trait_name in trait_names){
   best_fit_count = table(all_best_models$model)
   max_count = max(best_fit_count)
   best_model = best_fit_count[best_fit_count == max_count]
-  #
-  write.table(best_fit_count, paste(dir,"/best_model_count.csv", sep=""), sep=",", quote=F, row.names=F) 
-  
   best_model_name = names(best_model)
+  # export
+  write.table(best_fit_count, paste(dir,"/best_model_count.csv", sep=""), sep=",", quote=F, row.names=F) 
   ### retrieve best estimates
   model_estimates = best_estimates[all_best_models$model == best_model_name,]
   n_rows = nrow(model_estimates)

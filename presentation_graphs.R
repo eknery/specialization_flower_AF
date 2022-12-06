@@ -2,8 +2,6 @@
 library(ape)
 library(phytools)
 library(geiger)
-library(OUwie)
-library(nlme)
 library(rexpokit)
 library(cladoRcpp)
 library(BioGeoBEARS)
@@ -16,6 +14,7 @@ if (dir_check == FALSE){
   dir.create(path= "4_presentation_graphs", showWarnings = , recursive = FALSE, mode = "0777")
 }
 
+
 ### phylogenetic tree location
 trfn ="2_comparative_analyses/pruned_mcc_phylo.nwk"
 tr = read.tree(trfn)
@@ -26,10 +25,8 @@ n_inner_nodes = tr$Nnode
 
 ### load flower pc scores
 center_flower_df = read.table("1_flower_analyses/center_flower_df.csv", sep=",", h=T)
-
 # sampled species
 sampled_species = center_flower_df$species
-
 # geographic state
 state = center_flower_df$state
 
@@ -91,11 +88,10 @@ for (i in 1:n_tips){
 names(bar_colors) = tr$tip.label
 
 ### trait vectors
-trait= center_flower_df$stigma_size
+trait= center_flower_df$herkogamy
+names(trait) = center_flower_df$species
 
 range(trait)
-
-names(trait) = center_flower_df$species
 
 tiff("4_presentation_graphs/dec_mcc_ranges_3.tiff", units="in", width=3, height=6, res=600)
   plotTree(tree=tr,fsize=0.75, ftype="i")
@@ -104,7 +100,7 @@ tiff("4_presentation_graphs/dec_mcc_ranges_3.tiff", units="in", width=3, height=
   axisPhylo(pos=c(0.5), font=3, cex.axis=0.5)
 dev.off()
 
-tiff("4_presentation_graphs/tree.tiff", units="in", width=3.5, height=6, res=600)
+tiff("4_presentation_graphs/herkogamy.tiff", units="in", width=3.5, height=6, res=600)
   plotTree.wBars(tree=tr, x=trait,fsize=0.75, col=bar_colors, scale=2, ftype="i", method="plotTree")
   tiplabels(pie=tip_states_probs, piecol=state_cols, cex=0.5)
   nodelabels(node=(1+n_tips):(n_tips+n_inner_nodes), pie= inner_node_probs, piecol=state_cols, cex=1)
