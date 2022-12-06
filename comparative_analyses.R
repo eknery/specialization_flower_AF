@@ -10,19 +10,13 @@ library(BioGeoBEARS)
 
 ### load flower pc scores
 center_flower_df = read.table("1_flower_analyses/center_flower_df.csv", sep=",", h=T)
-
 # choose flower proxy!
 flower_proxy = center_flower_df
-
 # sampled species
 sampled_species = center_flower_df$species
-
 # geographic state
-geo_state = center_flower_df$state
-names(geo_state) = center_flower_df$species
-
-### load species' altitude
-spp_altitude = read.table("3_hypervolume_inference/spp_altitude.csv")
+state = center_flower_df$state
+names(state) = center_flower_df$species
 
 ### load mcc phylogeentic tree
 mcc_phylo = read.tree("2_comparative_analyses/pruned_mcc_phylo.nwk")
@@ -30,7 +24,7 @@ mcc_phylo = read.tree("2_comparative_analyses/pruned_mcc_phylo.nwk")
 ### counting pruned phylognetic trees
 n_phylo = length(list.files("2_comparative_analyses/pruned_phylos"))
 
-### plottinglibraries
+### plotting libraries
 library(tidyverse)
 library(PupillometryR)
 library(ggpubr)
@@ -116,6 +110,9 @@ library(raster)
 library(sp)
 library(sf)
 
+### loading spp coordinates
+spp_points=read.table("0_data/spp_points_7km.csv", header =T, sep=",",  na.strings = "NA", fill=T)
+
 ### load altitude raster
 ras_alt = raster("0_data/rasters/altitude.gri")
 
@@ -135,9 +132,8 @@ write.table(spp_altitude, "2_comparative_analyses/spp_altitude.csv", sep=",", ro
 
 ### testing altitude difference
 # difference per distribution
-means = aggregate(spp_altitude$altitude, by= list(spp_altitude$state), mean)
-means$x[1] - means$x[2]
-aggregate(spp_altitude$altitude, by= list(spp_altitude$state), sd)
+center_sp_alt = aggregate(spp_altitude$altitude, by= list(spp_altitude$state), median)
+dispersion_sp_alt = aggregate(spp_altitude$altitude, by= list(spp_altitude$state), IQR)
 
 # source permutation test
 source("function_permutation_test.R")
@@ -155,6 +151,7 @@ ggplot(data= spp_altitude, aes(x=state, y=altitude, fill= state)) +
   geom_flat_violin(position = position_nudge(x = 0.12, y = 0), alpha = 0.25) +
   scale_fill_manual(values=mycols)+
   scale_colour_manual(values=mycols)+
+  ylim(c(0,1500))+
   xlab("geographic distribution")+ ylab("species' elevation (m)")+
   scale_x_discrete(labels=c("AF" = "AF-endemic", "other" = "non-endemic"))+
   theme(panel.background=element_rect(fill="white"), panel.grid=element_line(colour=NULL),panel.border=element_rect(fill=NA,colour="black"),axis.title=element_text(size=axis_title_size,face="bold"),axis.text.x=element_text(size=x_text_size),axis.text.y = element_text(angle = 90),legend.position = "none")
@@ -201,7 +198,7 @@ old_age = min(anc_data$anc_node_ages)
 new_age = round(max(anc_data$anc_node_ages), 3)
 # intervals
 intervals = anc_data$anc_node_ages
-breaks = seq(new_age, old_age, by= (old_age - new_age)/10)
+breaks = seq(new_age, old_age, by= (old_age - new_age)/15)
 for (i in 1:length(breaks)){
   intervals[which(anc_data$anc_node_ages > breaks[i+1] & anc_data$anc_node_ages < breaks[i])] = (breaks[i] + breaks[i+1])/2
 }
@@ -211,13 +208,16 @@ anc_data = data.frame(anc_data, intervals)
 list_anc_data = split(anc_data, f= anc_data$state)
 all_summary_anc = data.frame()
 for (i in 1:length(list_anc_data)){
-  central = aggregate(list_anc_data[[i]]$anc_altitude, by= list(list_anc_data[[i]]$intervals), mean)
-  dispersion  = aggregate(list_anc_data[[i]]$anc_altitude, by= list(list_anc_data[[i]]$intervals), function(x){ 1.96 * sd(x)/sqrt(length(x)) })
+  central = aggregate(list_anc_data[[i]]$anc_altitude, by= list(list_anc_data[[i]]$intervals),  function(x){median(x, na.rm=T)})
+  dispersion  = aggregate(list_anc_data[[i]]$anc_altitude, by= list(list_anc_data[[i]]$intervals), function(x){IQR(x, na.rm=T)} )
   state = rep(names(list_anc_data)[i], nrow(central) )
   summary_anc = cbind(state, central, dispersion[,-1])
   all_summary_anc = rbind(all_summary_anc, summary_anc)
 }
 colnames(all_summary_anc) = c("state", "age", "central", "dispersion")
+
+# drop negative ancestral values
+all_summary_anc$central - (all_summary_anc$dispersion/2)
 
 ### plotting
 # text size
@@ -228,10 +228,9 @@ tiff("2_comparative_analyses/altitude_reconstruction.tiff", units="in", width=3.
 ggplot(data= all_summary_anc, aes(x=age, y=central, group= state, color=state) ) +
   geom_point(size = 1, alpha = 1) +
   geom_line(size=1)+
-  geom_errorbar(size=0.75, width=0, aes(ymin=central-dispersion, ymax=central+dispersion))+
+  geom_errorbar(size=0.75, width=0, aes(ymin=central-(dispersion/2), ymax=central+(dispersion/2)))+
   scale_colour_manual(values=mycols)+
-  xlim(c(-12,-0.5))+
-  #scale_x_continuous(breaks=seq(-12,-1, by=1), labels=as.character(seq(-12,-1, by=1)) )+
+  xlim(c(-12,-0.5))+ ylim(c(0,1500))+
   xlab("time before present (m.y.a.)")+ ylab("species' elevation (m)")+
   theme(panel.background=element_rect(fill="white"), panel.grid=element_line(colour=NULL),panel.border=element_rect(fill=NA,colour="black"),axis.title=element_text(size=axis_title_size,face="bold"),axis.text.x=element_text(size=x_text_size),axis.text.y = element_text(angle = 90),legend.position = "none")
 dev.off()

@@ -95,24 +95,22 @@ center_flower_df = aggregate(flower_df[,-1], by=list(flower_df$species), median)
 ### traits by geographic group
 # sampled geographic states
 sampled_bool = names(geo_state) %in% center_flower_df$Group.1
-samp_geo_state = geo_state[sampled_bool]
+state = geo_state[sampled_bool]
 # geographic groups into flower data
-center_flower_df = data.frame(samp_geo_state, center_flower_df)
+center_flower_df = data.frame(samp_geo_state, state)
 # descriptive statistics
-geo_center = aggregate(center_flower_df[,-c(1,2)], by=list(center_flower_df$samp_geo_state), mean)
-geo_disper = aggregate(center_flower_df[,-c(1,2)], by=list(center_flower_df$samp_geo_state), sd)
-# name
+geo_center = aggregate(center_flower_df[,-c(1,2)], by=list(center_flower_df$state), median)
+geo_disper = aggregate(center_flower_df[,-c(1,2)], by=list(center_flower_df$state), IQR)
 colnames(center_flower_df)[1:2] = c("state", "species")
 # exporting
 write.table(center_flower_df, "1_flower_analyses/center_flower_df.csv", sep=",", quote=F, row.names=F, col.names=T)
 write.table(geo_center, "1_flower_analyses/trait_center_per_geography.csv", sep=",", quote=F, row.names=F, col.names=T)
 write.table(geo_disper,"1_flower_analyses/trait_dispersion_per_geography.csv", sep=",", quote=F, row.names=F, col.names=T)
 
-######################## floral traits by geography #######################
+######################## Testing floral trait differences  #######################
 
 ### loading species' flower traits
 center_flower_df= read.table("1_flower_analyses/center_flower_df.csv", sep=",", h=T)
-
 
 ### testing differences
 # source function
@@ -128,6 +126,7 @@ for(j in 3:ncol(center_flower_df)){
   all_pvalues = c(all_pvalues, pvalue)
 }
 names(all_pvalues) = all_traits
+all_pvalues
 
 ### plotting
 # my colors
