@@ -250,7 +250,7 @@ for (n in 1:n_phylos ){
   for (i in 1:length(geo_groups) ){
     group_name = names(geo_groups)[i]
     one_group = geo_groups[[i]]
-    no = one_group$intersection/one_group$union
+    no = one_group$intersection/one_group$sp_hv 
     mean_no = mean(no)
     linear_model = lm(no ~ one_group$divergence_time)
     intercept_no = linear_model$coefficients["(Intercept)"]
@@ -272,38 +272,24 @@ str(sister_no_metrics)
 #exporting
 write.table(sister_no_metrics, "3_hypervolume_inference/sister_no_metrics.csv", sep=',', quote=F, row.names=F)
 
-############################## analyzing RO metrics ############################
+############################## analyzing NO metrics ############################
 
 sister_no_metrics = read.table("3_hypervolume_inference/sister_no_metrics.csv", sep=',', h=T)
 
 ### summarizing metrics 
-means = aggregate(sister_no_metrics$angular_no, by = list(sister_no_metrics$state), mean )
-sds = aggregate(sister_no_metrics$angular_no, by = list(sister_no_metrics$state), sd )
-summary_no_group = cbind(means, sds[,2])
-colnames(summary_no_group) = c("state", "mean", "sd")
+center = aggregate(sister_no_metrics$angular_no, by = list(sister_no_metrics$state), median)
+dispersion = aggregate(sister_no_metrics$angular_no, by = list(sister_no_metrics$state), IQR )
+summary_no_group = cbind(center, dispersion[,2])
+colnames(summary_no_group) = c("state", "center", "dispersion")
 # export
 write.table(summary_no_group, "3_hypervolume_inference/summary_no_group.csv", sep=',', row.names=F, quote=F)
 
 ### permutation test
-# set comparison
-i = 1
-j = 2
-diff = means$x[i] -  means$x[j]
-# random comparisons
-iterations = 1000
-rand_diff =  c()
-for(n in 1:iterations){
-  rand_state = sample(sister_no_metrics$state)
-  rand_means = aggregate(sister_no_metrics$angular_no, by = list(rand_state), mean )
-  rand_diff[n] = rand_means$x[i] - rand_means$x[j]
-}
+# load function
+source("function_permutation_test.R")
+# apply function
+permutation_test(factor = sister_no_metrics$state, response= sister_no_metrics$angular_no, iter=999, stats = "median",  out_dir="3_hypervolume_inference", name="no_slope_test.tiff")
 
-if (diff < median(rand_diff)){
-  pvalue = 1 - ( sum(diff < rand_diff) / (iterations +1) )
-} else{
-  pvalue = 1 - ( sum(diff >= rand_diff) / (iterations +1) )
-}
-print(paste("p-value:", pvalue))
 
 ################################## plotting ##################################
 ### packages
