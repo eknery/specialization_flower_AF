@@ -237,8 +237,12 @@ dev.off()
 
 ################### fitting evolutionary models to traits over trees ################
 
-### create directory for ouwie models
-dir.create(path= "2_comparative_analyses/OUWIE", showWarnings = , recursive = FALSE, mode = "0777")
+# check if dir exists
+dir_check = dir.exists(paths="2_comparative_analyses/OUWIE")
+# create dir if not created yet
+if (dir_check == FALSE){
+  dir.create(path= "2_comparative_analyses/OUWIE", showWarnings = , recursive = FALSE, mode = "0777")
+}
 
 ### model fitting and selection functions
 source("function_fit_evo_models.R")
