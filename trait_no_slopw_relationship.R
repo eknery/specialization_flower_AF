@@ -33,7 +33,7 @@ all_trait_names = list.files("2_comparative_analyses/OUWIE")
 reg_params = c()
 
 ### looping over traits
-for (trait_name in all_trait_names){
+  trait_name = all_trait_names[1]
   ### setting dir and axis name  
   dir_name = paste(trait_name,"/best_estimates.csv", sep="")
   axis_name =  paste("theta", trait_name, sep=" ")
@@ -45,8 +45,8 @@ for (trait_name in all_trait_names){
   state = c( rep("AF", length(best_estimates$theta_1)) , rep("other", length(best_estimates$theta_2) ) )
   #### reliable estimate
   # bounds
-  lw_bound = median(theta) - IQR(theta)*1.5
-  up_bound = median(theta) + IQR(theta)*1.5
+  lw_bound = 3
+  up_bound = 11
   index = which(theta > lw_bound & theta < up_bound)
   # select reliable theta
   theta_clean = theta[index]
@@ -63,10 +63,11 @@ for (trait_name in all_trait_names){
   summary_linear = summary(linear)
   r2 = summary_linear$adj.r.squared
   pvalue = round(summary_linear$coefficients[2,4], 3)
-  # take all reg param
-  one_reg = c(trait_name, reg_intercept, reg_slope, r2, pvalue)
-  ### update regression params
-  reg_params = rbind(reg_params, one_reg)
+  ### take all reg param
+  one_reg = data.frame(trait_name, reg_intercept, reg_slope, r2, pvalue)
+  # export
+  reg_name = paste("reg_params",trait_name, sep="_")
+  write.table(one_reg, paste("3_hypervolume_inference/regression_analyses/", reg_name, ".csv", sep=""), sep=",", quote = F, row.names = F)
   ### plot linear relationship
   # theta dataframe
   theta_df = data.frame(state_clean, theta_clean, no_slope_clean)
@@ -82,6 +83,4 @@ for (trait_name in all_trait_names){
   tiff(paste("3_hypervolume_inference/regression_analyses/",trait_name, ".tiff", sep=""), units="in", width=3.5, height=3, res=600)
     print(plot_linear)
   dev.off()
-}
 
-write.table(reg_params, "3_hypervolume_inference/regression_analyses/reg_params.csv", sep=",", quote = F, row.names = F)
