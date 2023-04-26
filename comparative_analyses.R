@@ -24,13 +24,17 @@ mcc_phylo = read.tree("2_comparative_analyses/pruned_mcc_phylo.nwk")
 ### counting pruned phylognetic trees
 n_phylo = length(list.files("2_comparative_analyses/pruned_phylos"))
 
-### plotting libraries
+### loading libraries
 library(tidyverse)
 library(PupillometryR)
 library(ggpubr)
 library(readr)
 library(tidyr)
 library(ggplot2)
+library(Hmisc)
+library(plyr)
+library(RColorBrewer)
+library(reshape2)
 # my colors
 mycols = c( "#1E88E5", "#D81B60")
 names(mycols) = c("AF", "other")
@@ -103,137 +107,6 @@ for (i in 1:n_phylo){
   write.table(anc_node_states , paste("2_comparative_analyses/DEC_ancestral_reconstructions/anc_node_states",as.character(i), sep="_"), sep=",", row.names=F, quote=F)
 }
 
-################################# current altitude analysis ###########################
-
-### load packages
-library(raster)
-library(sp)
-library(sf)
-
-### loading spp coordinates
-spp_points=read.table("0_data/spp_points_7km.csv", header =T, sep=",",  na.strings = "NA", fill=T)
-
-### load altitude raster
-ras_alt = raster("0_data/rasters/altitude.gri")
-
-### altitude values per species
-# extarct values
-alt_values = raster::extract(ras_alt ,spp_points[,2:3])
-# center to species
-center_alt_values = aggregate(alt_values, by=list(spp_points$species), function(x){median(x, na.rm=T)} )
-# keep only species with sampled flowers
-spp_altitude = center_alt_values[center_alt_values$Group.1 %in% sampled_species,]
-# name columns
-colnames(spp_altitude) = c("species", "altitude")
-# add states
-spp_altitude = data.frame(state, spp_altitude)
-# export
-write.table(spp_altitude, "2_comparative_analyses/spp_altitude.csv", sep=",", row.names= F, quote = F)
-
-### testing altitude difference
-# difference per distribution
-center_sp_alt = aggregate(spp_altitude$altitude, by= list(spp_altitude$state), median)
-dispersion_sp_alt = aggregate(spp_altitude$altitude, by= list(spp_altitude$state), IQR)
-
-# source permutation test
-source("function_permutation_test.R")
-permutation_test(factor= spp_altitude$state, response= spp_altitude$altitude,iter=999, out_dir = "2_comparative_analyses", name= "altitude.tiff")
-
-### plotting
-# text size
-axis_title_size = 10
-x_text_size = 8
-# plot
-tiff("2_comparative_analyses/altitude_per_distribution.tiff", units="in", width=3.5, height=3, res=600)
-ggplot(data= spp_altitude, aes(x=state, y=altitude, fill= state)) +
-  geom_point(aes(color=state),position = position_jitter(width = 0.07), size = 1.5, alpha = 0.25) +
-  geom_boxplot(width = 0.2, outlier.shape = NA, alpha = 0.25)+
-  geom_flat_violin(position = position_nudge(x = 0.12, y = 0), alpha = 0.25) +
-  scale_fill_manual(values=mycols)+
-  scale_colour_manual(values=mycols)+
-  ylim(c(0,1500))+
-  xlab("geographic distribution")+ ylab("species' elevation (m)")+
-  scale_x_discrete(labels=c("AF" = "AF-endemic", "other" = "non-endemic"))+
-  theme(panel.background=element_rect(fill="white"), panel.grid=element_line(colour=NULL),panel.border=element_rect(fill=NA,colour="black"),axis.title=element_text(size=axis_title_size,face="bold"),axis.text.x=element_text(size=x_text_size),axis.text.y = element_text(angle = 90),legend.position = "none")
-dev.off()
-
-####################### ancestral reconstruction of altitude ###################
-
-### load species' altitude
-spp_altitude = read.table("2_comparative_analyses/spp_altitude.csv", sep=",", h=T)
-# altitude vector
-altitude = spp_altitude$altitude
-names(altitude) = spp_altitude$species
-
-### acestral reconstruction over trees
-anc_data = c()
-for (i in 1:n_phylo){ 
-  # phylogeny tree location
-  trfn = paste("2_comparative_analyses/pruned_phylos/pruned_phylo_", as.character(i), sep="")
-  tr = read.tree(trfn)
-  # n tips and nodes
-  n_tips = Ntip(tr)
-  n_nodes = tr$Nnode
-  # node ages
-  node_ages = round(node.depth.edgelength(tr),5)
-  present = round(max(node_ages), 5)
-  node_ages = node_ages - present
-  # ancestral node ages
-  anc_node_ages = node_ages[(n_tips+1):(n_tips+n_nodes)]
-  # ancestral biogeographic state
-  dec_fn = paste("2_comparative_analyses/DEC_ancestral_reconstructions/anc_node_states",as.character(i), sep="_")
-  anc_node_states = read.table(dec_fn, sep=",", h=T)
-  anc_node_states$state[anc_node_states$state == "AFother"] = "other"
-  # ancestral reconstruction of altitude
-  anc_altitude = as.numeric( fastAnc(tree = tr, x = altitude) )
-  # organizing into one dataframe
-  one_rec = data.frame(anc_node_states, anc_node_ages, anc_altitude)
-  # update!
-  anc_data = rbind(anc_data, one_rec)
-}
-
-### dividing into time intervals
-# time boundaries
-old_age = min(anc_data$anc_node_ages)
-new_age = round(max(anc_data$anc_node_ages), 3)
-# intervals
-intervals = anc_data$anc_node_ages
-breaks = seq(new_age, old_age, by= (old_age - new_age)/15)
-for (i in 1:length(breaks)){
-  intervals[which(anc_data$anc_node_ages > breaks[i+1] & anc_data$anc_node_ages < breaks[i])] = (breaks[i] + breaks[i+1])/2
-}
-anc_data = data.frame(anc_data, intervals)
-
-### summarizing reconstruction by state across intervals
-list_anc_data = split(anc_data, f= anc_data$state)
-all_summary_anc = data.frame()
-for (i in 1:length(list_anc_data)){
-  central = aggregate(list_anc_data[[i]]$anc_altitude, by= list(list_anc_data[[i]]$intervals),  function(x){median(x, na.rm=T)})
-  dispersion  = aggregate(list_anc_data[[i]]$anc_altitude, by= list(list_anc_data[[i]]$intervals), function(x){IQR(x, na.rm=T)} )
-  state = rep(names(list_anc_data)[i], nrow(central) )
-  summary_anc = cbind(state, central, dispersion[,-1])
-  all_summary_anc = rbind(all_summary_anc, summary_anc)
-}
-colnames(all_summary_anc) = c("state", "age", "central", "dispersion")
-
-# drop negative ancestral values
-all_summary_anc$central - (all_summary_anc$dispersion/2)
-
-### plotting
-# text size
-axis_title_size = 10
-x_text_size = 8
-
-tiff("2_comparative_analyses/altitude_reconstruction.tiff", units="in", width=3.5, height=3, res=600)
-ggplot(data= all_summary_anc, aes(x=age, y=central, group= state, color=state) ) +
-  geom_point(size = 1, alpha = 1) +
-  geom_line(size=1)+
-  geom_errorbar(size=0.75, width=0, aes(ymin=central-(dispersion/2), ymax=central+(dispersion/2)))+
-  scale_colour_manual(values=mycols)+
-  xlim(c(-12,-0.5))+ ylim(c(0,1500))+
-  xlab("time before present (m.y.a.)")+ ylab("species' elevation (m)")+
-  theme(panel.background=element_rect(fill="white"), panel.grid=element_line(colour=NULL),panel.border=element_rect(fill=NA,colour="black"),axis.title=element_text(size=axis_title_size,face="bold"),axis.text.x=element_text(size=x_text_size),axis.text.y = element_text(angle = 90),legend.position = "none")
-dev.off()
 
 ################### fitting evolutionary models to traits over trees ################
 
@@ -311,19 +184,79 @@ for (j in 1:ncol(trait_df)){ #
   write.table(best_estimates, paste(out_dir,"/best_estimates.csv", sep=""), sep=",",quote=F,row.names=F)
 }
 
-############################## describing best-fit model #########################
+################################## fitting the WN model ##########################
 
-### loading libraries
-library(tidyverse)
-library(PupillometryR)
-library(ggpubr)
-library(readr)
-library(tidyr)
-library(ggplot2)
-library(Hmisc)
-library(plyr)
-library(RColorBrewer)
-library(reshape2)
+# check if dir exists
+dir_check = dir.exists(paths="2_comparative_analyses/WN")
+# create dir if not created yet
+if (dir_check == FALSE){
+  dir.create(path= "2_comparative_analyses/WN", showWarnings = , recursive = FALSE, mode = "0777")
+}
+
+### separating traits
+trait_df = flower_proxy[,-c(1:2)]
+
+### loop over all traits
+for (j in 1:ncol(trait_df)){  
+  ## choose the trait
+  trait = trait_df[,j]
+  names(trait) = flower_proxy[,2]
+  ## trait name
+  trait_name = colnames(trait_df)[j]
+  ## setting output dir
+  # check if output dir exists
+  dir_check = dir.exists(paths=paste("2_comparative_analyses/WN/",trait_name, sep="") )
+  # create output dir if not created yet
+  if (dir_check == FALSE){
+    dir.create(path= paste("2_comparative_analyses/WN/",trait_name, sep=""), showWarnings = , recursive = FALSE, mode = "0777")
+  }
+  # output dir
+  out_dir = paste("2_comparative_analyses/WN/",trait_name, sep="")
+  ## vector to receive AICc values
+  wn_aicc = c()
+  ## loop over trees
+  for (i in 1:n_phylo){
+    # phylogenetic tree
+    tr_fn = paste("2_comparative_analyses/pruned_phylos/pruned_phylo_", as.character(i), sep="")
+    tr = read.tree(tr_fn)
+    # fit wn to tree and trait
+    wn_fit = fitContinuous(phy= tr, dat=trait , model = "white")
+    wn_aicc = c(wn_aicc, wn_fit$opt$aicc)
+  }
+  write.table(wn_aicc, paste(out_dir,"/wn_aicc.csv", sep=""), sep=",",quote=F,row.names=F)
+} 
+
+################### contrasting evolutionary models with WN ######################
+
+### listing traits 
+all_trait_names = list.files("2_comparative_analyses/OUWIE")
+
+### vectors to receive results
+wn_best_percent = c()
+
+for (trait_name in all_trait_names){
+  ## setting output dir
+  dir_ouwie = paste("2_comparative_analyses/OUWIE/",trait_name, sep="")
+  dir_wn = paste("2_comparative_analyses/WN/",trait_name, sep="")
+  ## load best-model fit 
+  all_best_models = read.table(paste(dir_ouwie,"/best_models.csv", sep=""), sep=",", h=T)
+  ou_aicc = all_best_models$aicc
+  ## load wn fit
+  wn_aicc = read.table(paste(dir_wn,"/wn_aicc.csv", sep=""), sep=",", h=T)
+  ## comparing 
+  bolean = ou_aicc > wn_aicc
+  wn_best_percent = c(wn_best_percent, (sum(bolean) / length(bolean) ) )
+}
+
+### into a data frame
+wn_best_df = data.frame(all_trait_names, wn_best_percent)
+wn_best_df
+
+### export
+write.table(wn_best_df, "2_comparative_analyses/WN/wn_best_df", sep=",",quote=F, row.names=F)
+
+
+############################## describing best-fit model #########################
 
 ### listing traits 
 all_trait_names = list.files("2_comparative_analyses/OUWIE")
@@ -412,4 +345,3 @@ for (trait_name in all_trait_names){
     dev.off()
   }
 }
-
