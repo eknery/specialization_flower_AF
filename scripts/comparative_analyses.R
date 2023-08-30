@@ -10,13 +10,11 @@ library(BioGeoBEARS)
 
 ### require managing packages
 library(tidyverse)
-library(PupillometryR)
-library(ggpubr)
-library(readr)
+library(dplyr)
 library(tidyr)
 library(ggplot2)
-library(Hmisc)
-library(plyr)
+library(ggpubr)
+library(PupillometryR)
 library(RColorBrewer)
 library(reshape2)
 
@@ -27,7 +25,7 @@ flower_proxy = center_flower_df
 # sampled species
 sampled_species = center_flower_df$species
 # geographic state
-state = center_flower_df$state
+state = center_flower_df$geo_state
 names(state) = center_flower_df$species
 
 ### load mcc phylogeentic tree
@@ -115,16 +113,16 @@ for (i in 1:n_phylo){
 dir_check = dir.exists(paths="2_comparative_analyses/OUWIE")
 # create dir if not created yet
 if (dir_check == FALSE){
-  dir.create(path= "2_comparative_analyses/OUWIE", showWarnings = , recursive = FALSE, mode = "0777")
+  dir.create(path= "2_comparative_analyses/OUWIE" , recursive = FALSE, mode = "0777")
 }
 
 ### model fitting and selection functions
-source("function_fit_evo_models.R")
-source("function_choose_best.R")
+source("scripts/function_fit_evo_models.R")
+source("scripts/function_choose_best.R")
 
 ### setting species, regimes, and trait dataframe
 species = flower_proxy$species 
-regime = flower_proxy$state
+regime = flower_proxy$geo_state
 trait_df = flower_proxy[,-c(1:2)]
 
 # setting max parameter numbers
@@ -191,7 +189,7 @@ for (j in 1:ncol(trait_df)){ #
 dir_check = dir.exists(paths="2_comparative_analyses/WN")
 # create dir if not created yet
 if (dir_check == FALSE){
-  dir.create(path= "2_comparative_analyses/WN", showWarnings = , recursive = FALSE, mode = "0777")
+  dir.create(path= "2_comparative_analyses/WN", recursive = FALSE, mode = "0777")
 }
 
 ### separating traits
@@ -215,15 +213,10 @@ for (j in 1:ncol(trait_df)){
   out_dir = paste("2_comparative_analyses/WN/",trait_name, sep="")
   ## vector to receive AICc values
   wn_aicc = c()
-  ## loop over trees
-  for (i in 1:n_phylo){
-    # phylogenetic tree
-    tr_fn = paste("2_comparative_analyses/pruned_phylos/pruned_phylo_", as.character(i), sep="")
-    tr = read.tree(tr_fn)
-    # fit wn to tree and trait
-    wn_fit = fitContinuous(phy= tr, dat=trait , model = "white")
-    wn_aicc = c(wn_aicc, wn_fit$opt$aicc)
-  }
+  # fit wn to tree and trait
+  tr = mcc_phylo
+  wn_fit = fitContinuous(phy= tr, dat=trait , model = "white")
+  wn_aicc = c(wn_aicc, wn_fit$opt$aicc)
   write.table(wn_aicc, paste(out_dir,"/wn_aicc.csv", sep=""), sep=",",quote=F,row.names=F)
 } 
 

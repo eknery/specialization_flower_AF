@@ -1,5 +1,7 @@
 all_trait_names,wn_best_percent
+anther_rel_diff,0
 flower_size,0
-herkogamy,0.02
-pore_size,0.1
+herkogamy,0
+pore_size,0
+stamen_diff,0
 stigma_size,0.01
