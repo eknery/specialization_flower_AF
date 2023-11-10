@@ -1,3 +1,3 @@
-geo_state,median(flower_size),IQR(flower_size),median(stamen_diff),IQR(stamen_diff),median(anther_rel_diff),IQR(anther_rel_diff),median(pore_size),IQR(pore_size),median(herkogamy),IQR(herkogamy)
-AF,5.26,1.11,0.350000000000001,0.45,0.112189440993789,0.0791542288557215,0.255,0.08,-3.26,0.51
-other,5.995,2.7725,0.915,0.67875,0.211716795611837,0.139797791506899,0.1875,0.08375,-2.6225,1.195
+geo_state,median(flower_size),IQR(flower_size),median(rel_pore_size),IQR(rel_pore_size),median(anther_rel_diff),IQR(anther_rel_diff),median(herkogamy),IQR(herkogamy)
+AF,5.26,1.11,0.122525957170668,0.0562843791605354,0.112189440993789,0.0791542288557215,-3.26,0.51
+other,5.995,2.7725,0.0820078403569865,0.077793177557429,0.211716795611837,0.139797791506899,-2.6225,1.195

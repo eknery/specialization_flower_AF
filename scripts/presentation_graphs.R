@@ -1,4 +1,4 @@
-### require packages
+### packages for PCM
 library(ape)
 library(phytools)
 library(geiger)
@@ -6,7 +6,7 @@ library(rexpokit)
 library(cladoRcpp)
 library(BioGeoBEARS)
 
-### loading libraries
+### other libraries
 library(tidyverse)
 library(PupillometryR)
 library(ggpubr)
@@ -20,7 +20,7 @@ library(reshape2)
 
 ### create directory for pgls models
 # check if dir exists
-dir_check = dir.exists(paths="4_presentation_graphs")
+dir_check = dir.exists(paths="3_graphs")
 # create dir if not created yet
 if (dir_check == FALSE){
   dir.create(path= "4_presentation_graphs", showWarnings = , recursive = FALSE, mode = "0777")
@@ -135,7 +135,7 @@ write.table(relprobs_matrix,"4_presentation_graphs/relprobs_matrix.csv", sep=","
 ################### plotting phylogenetic reconstruction and traits #############
 
 ### loading relative probabilities at notes
-relprobs_matrix = read.table("4_presentation_graphs/relprobs_matrix.csv", sep=",", h=T)
+relprobs_matrix = read.table("3_graphs/relprobs_matrix.csv", sep=",", h=T)
 
 ### setting states
 # tip states probs
@@ -155,19 +155,20 @@ for (i in 1:n_tips){
 names(bar_colors) = tr$tip.label
 
 ### trait vectors
-trait= center_flower_df$herkogamy
+trait_name = "anther_rel_diff"
+trait= center_flower_df[[trait_name]]
 names(trait) = center_flower_df$species
 
 range(trait)
 
-tiff("4_presentation_graphs/dec_mcc_ranges_3.tiff", units="in", width=3, height=6, res=600)
+tiff("3_graphs/dec_mcc_ranges_3.tiff", units="in", width=3, height=6, res=600)
   plotTree(tree=tr,fsize=0.75, ftype="i")
   tiplabels(pie=tip_states_probs, piecol=state_cols, cex=0.75)
   nodelabels(node=(1+n_tips):(n_tips+n_inner_nodes), pie= inner_node_probs, piecol=state_cols, cex=1.5)
   axisPhylo(pos=c(0.5), font=3, cex.axis=0.5)
 dev.off()
 
-tiff("4_presentation_graphs/herkogamy.tiff", units="in", width=3.5, height=6, res=600)
+tiff(paste0("3_graphs/",trait_name,".tiff"), units="in", width=3.5, height=6, res=600)
   plotTree.wBars(tree=tr, x=trait,fsize=0.75, col=bar_colors, scale=2, ftype="i", method="plotTree")
   tiplabels(pie=tip_states_probs, piecol=state_cols, cex=0.5)
   nodelabels(node=(1+n_tips):(n_tips+n_inner_nodes), pie= inner_node_probs, piecol=state_cols, cex=1)

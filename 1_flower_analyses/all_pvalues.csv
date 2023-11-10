@@ -1,6 +1,5 @@
 all_traits,all_pvalues
-flower_size,0.0929
-stamen_diff,0.0174
-anther_rel_diff,0.00139999999999996
-pore_size,0.0121
-herkogamy,0.0399
+flower_size,0.0931
+rel_pore_size,0.0505
+anther_rel_diff,0.00129999999999997
+herkogamy,0.0379

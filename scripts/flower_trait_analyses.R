@@ -29,22 +29,25 @@ ftraits = read.table("0_data/flower_trait_matrix.csv", sep=",", h=T)
 # flower size
 flower_size = ftraits$hypathium_height + ftraits$style_height
 
-## stamen difference
-stamen_diff = (ftraits$major_anther_height + ftraits$major_filet_height) - (ftraits$minor_anther_height + ftraits$minor_filet_height)
-
-## anther difference
-anther_rel_diff = (major_anther_size - minor_anther_size )/ minor_anther_size
-
 ## pore size
 pore_size = ftraits$pore_long_section
+
+## relative pore size
+rel_pore_size = ftraits$pore_long_section/ftraits$minor_anther_height
+
+## anther relative difference
+anther_rel_diff = (ftraits$major_anther_height - ftraits$minor_anther_height )/ ftraits$minor_anther_height
 
 ## herkogamy
 herkogamy = (ftraits$style_height) - (ftraits$hypathium_height + ftraits$minor_filet_height + ftraits$minor_anther_height)
 
 # flower dataframe
 species = ftraits$species
-flower_df = data.frame(species,  flower_size, stamen_diff,
-                       anther_rel_diff, pore_size, herkogamy)
+flower_df = data.frame(species,  
+                       flower_size,
+                       rel_pore_size, 
+                       anther_rel_diff,  
+                       herkogamy)
 
 ############################## flower traits by geographic state ###################
 
@@ -56,22 +59,19 @@ flower_df = flower_df |>
 center_flower_df = flower_df |> 
   group_by(geo_state, species) |> 
   reframe(flower_size = median(flower_size),
-          stamen_diff = median(stamen_diff), 
+          rel_pore_size = median(rel_pore_size),
           anther_rel_diff = median(anther_rel_diff), 
-          pore_size = median(pore_size),
           herkogamy = median(herkogamy)
           )
 
-summary_traits = center_flower_df |>
+summary_traits = center_flower_df  %>% 
   group_by(geo_state) |>
   reframe(median(flower_size),
           IQR(flower_size),
-          median(stamen_diff),
-          IQR(stamen_diff),
+          median(rel_pore_size),
+          IQR(rel_pore_size),
           median(anther_rel_diff), 
           IQR(anther_rel_diff),
-          median(pore_size),
-          IQR(pore_size),
           median(herkogamy),
           IQR(herkogamy)
   )
@@ -123,7 +123,7 @@ flower = center_flower_df[-drop_it,]
 
 ### test relationship
 # flower trait
-trait_name = "anther_rel_diff"
+trait_name = "rel_pore_size"
 trait = flower[,trait_name]
 # boundaries
 bound = sd(trait)*1.96
@@ -151,13 +151,13 @@ tiff(paste("1_flower_analyses/allometry_whole_plant/",trait_name, ".tiff", sep="
   plot(x= height, y= trait, xlab= "height (m)", ylab= trait_name, col= "black")
   abline(model)
   text (x=8, y =0.15, labels = paste("R2: ",r))
-  text (x=8, y =0.1, labels = paste("p-value: ",pvalue))
+  text (x=8, y =0.12, labels = paste("p-value: ",pvalue))
 dev.off()
 
 ###### within flower
 # flower trait
 flower_size = center_flower_df$flower_size
-trait_name = "anther_rel_diff"
+trait_name = "rel_pore_size"
 trait = center_flower_df[,trait_name]
 # boundaries
 bound = sd(trait)*1.96
@@ -185,7 +185,7 @@ tiff(paste("1_flower_analyses/allometry_within_flower/",trait_name, ".tiff", sep
   plot(x= flower_size, y= trait, xlab= "flower size (mm)", ylab= trait_name, col= "black")
   abline(model)
   text (x=8, y =0.15, labels = paste("R2: ",r))
-  text (x=8, y =0.10, labels = paste("p-value: ",pvalue))
+  text (x=8, y =0.13, labels = paste("p-value: ",pvalue))
 dev.off()
 
 

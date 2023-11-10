@@ -8,7 +8,7 @@ library(rexpokit)
 library(cladoRcpp)
 library(BioGeoBEARS)
 
-### require managing packages
+### require other packages
 library(tidyverse)
 library(dplyr)
 library(tidyr)
@@ -165,7 +165,7 @@ for (j in 1:ncol(trait_df)){ #
     best_choice = choose_best(all_fits)
     all_best_models[i,] = best_choice$best_fit
     all_best_estimates[[i]] = best_choice$best_estimates
-    print(i)
+    print(paste0("tree number: ", i) )
   }
   # organizing estimates into dataframe
   best_estimates =c()
@@ -196,7 +196,7 @@ if (dir_check == FALSE){
 trait_df = flower_proxy[,-c(1:2)]
 
 ### loop over all traits
-for (j in 1:ncol(trait_df)){  
+for (j in 1:ncol(trait_df)){  # 
   ## choose the trait
   trait = trait_df[,j]
   names(trait) = flower_proxy[,2]
@@ -259,7 +259,7 @@ all_trait_names = list.files("2_comparative_analyses/OUWIE")
 mycols = c( "#1E88E5", "#D81B60")
 
 ### loop over all traits
-for (trait_name in all_trait_names){
+for (trait_name in all_trait_names){ ## 
   ### setting output dir
   dir = paste("2_comparative_analyses/OUWIE/",trait_name, sep="")
   ### load model fit and estimates
@@ -322,8 +322,11 @@ for (trait_name in all_trait_names){
     med = median(param_df$parameter, na.rm = T) 
     bound= IQR(param_df$parameter, na.rm = T)*1.5
     up_bound = med + bound
-    out_sum = sum(param_df$parameter > up_bound, na.rm = T)
-    if (out_sum != 0){  param_df = param_df[param_df$parameter < up_bound,] }
+    dw_bound = med - bound
+    up_sum = sum(param_df$parameter > up_bound, na.rm = T)
+    dw_sum = sum(param_df$parameter < dw_bound, na.rm = T)
+    if (up_sum != 0){  param_df = param_df[param_df$parameter < up_bound,] }
+    if (dw_sum != 0){  param_df = param_df[param_df$parameter > dw_bound,] }
     # plot parameter
     plot_param = ggplot(data= param_df, aes(x=state, y=parameter, fill=state)) +
       geom_point(aes(color=state),position = position_jitter(width = 0.07), size = 1, alpha = 0.65) +
