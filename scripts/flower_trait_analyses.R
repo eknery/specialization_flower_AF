@@ -35,6 +35,11 @@ pore_size = ftraits$pore_long_section
 ## relative pore size
 rel_pore_size = ftraits$pore_long_section/ftraits$minor_anther_height
 
+## stamen relative difference
+major_stamen = ftraits$major_anther_height + ftraits$major_filet_height
+minor_stamen = ftraits$minor_anther_height + ftraits$minor_filet_height
+stamen_dim = (major_stamen - minor_stamen) / minor_stamen
+
 ## anther relative difference
 anther_rel_diff = (ftraits$major_anther_height - ftraits$minor_anther_height )/ ftraits$minor_anther_height
 
@@ -46,13 +51,13 @@ species = ftraits$species
 flower_df = data.frame(species,  
                        flower_size,
                        rel_pore_size, 
-                       anther_rel_diff,  
+                       stamen_dim,  
                        herkogamy)
 
 ############################## flower traits by geographic state ###################
 
 ### merging geographic states
-flower_df = flower_df |> 
+flower_df = flower_df %>% 
   merge(y= geo_state, by="species",all.x=TRUE)
 
 ### centering by geographic state and species
@@ -60,7 +65,7 @@ center_flower_df = flower_df |>
   group_by(geo_state, species) |> 
   reframe(flower_size = median(flower_size),
           rel_pore_size = median(rel_pore_size),
-          anther_rel_diff = median(anther_rel_diff), 
+          stamen_dim = median(stamen_dim), 
           herkogamy = median(herkogamy)
           )
 
@@ -70,8 +75,8 @@ summary_traits = center_flower_df  %>%
           IQR(flower_size),
           median(rel_pore_size),
           IQR(rel_pore_size),
-          median(anther_rel_diff), 
-          IQR(anther_rel_diff),
+          median(stamen_dim), 
+          IQR(stamen_dim),
           median(herkogamy),
           IQR(herkogamy)
   )

@@ -129,7 +129,7 @@ trait_df = flower_proxy[,-c(1:2)]
 max_param_num = length(unique(regime))*4
 
 ### loop over all traits
-for (j in 1:ncol(trait_df)){ # 
+for (j in 3){ #  1:ncol(trait_df)
   ### choose trait
   trait = trait_df[,j] ## j !
   trait_name = colnames(trait_df)[j]
