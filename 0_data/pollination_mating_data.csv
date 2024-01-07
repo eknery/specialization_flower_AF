@@ -10,6 +10,7 @@ argyrophylla,miconia,0,1,0,0,NA,NA,Renner_1989
 brevitheca,cremanium,1,1,1,0,NA,NA,Kriebel_2014
 cataractae,amblyarrhena,1,1,1,0,NA,NA,Manrique-Valderrama_2022
 ciliata,hartigia,1,NA,NA,NA,0,0,Melo_1998
+ciliata,hartigia,1,1,0,0,NA,NA,Renner_1989
 discolor,glossocentrum,0,1,1,0,90.6,75.7,Borges_1991
 dispar,miconia,0,1,0,0,NA,NA,Renner_1989
 dodecandra,tamonea/jucunda,0,NA,NA,NA,0,NA,Sobrevila_1982
@@ -18,7 +19,7 @@ elaeoides,cremanium,1,1,1,1,40,80,Manrique-Valderrama_2022
 elegans,miconia,0,1,1,0,15.6,6.2,Borges_1991
 fallax,miconia,0,0,0,0,0,37.7,Goldenber_1998
 ferruginata,miconia,0,NA,NA,NA,100,54.9,Santos_2012
-gratissima,tamonea/jucunda,0,1,0,0,NA,NA,Renner_1989
+gratissima,jucunda,0,1,0,0,NA,NA,Renner_1989
 hyemalis,cremanium,1,1,1,0,95,88,Maia_2015
 hyemalis,cremanium,1,0,1,0,NA,NA,Varassin_2008
 ibaguensis,miconia,0,1,0,0,NA,NA,Renner_1989
@@ -31,14 +32,13 @@ minutiflora,glossocentrum,0,1,0,0,81.9,61.1,Goldenberg_1998
 minutiflora,glossocentrum,1,1,0,0,NA,NA,Mori_1984
 myriantha,glossocentrum,0,1,0,0,NA,NA,Renner_1989
 nervosa,miconia,0,1,0,0,NA,NA,Renner_1989
-paucidens,tamonea/jucunda,0,1,0,0,0,0,Goldenberg_1998
+paucidens,jucunda,0,1,0,0,0,0,Goldenberg_1998
 pepericarpa,glossocentrum,1,1,1,0,0,0,Goldenberg_1998
 petropolitana,glossocentrum,0,NA,NA,NA,0,90.9,Goldenberg_2001
-pileata,NA,0,1,0,0,NA,NA,Renner_1989
 poeppigii,miconia,0,1,0,0,NA,NA,Renner_1989
 pusilliflora,hypoxanthus,0,NA,NA,NA,0.4,0,Goldenberg_2001
 radulifolia,miconia,0,1,0,0,NA,NA,Renner_1989
-robinsoniana,tamonea/jucunda,1,1,0,0,NA,NA,Renner_1989
+robinsoniana,tamonea,1,1,0,0,NA,NA,Renner_1989
 rubiginosa,miconia,0,1,0,0,92,71,Goldenberg_1998
 rufescens,miconia,0,1,0,0,NA,NA,Renner_1989
 sellowiana,hypoxanthus,0,1,1,0,57,0,Maia_2015
