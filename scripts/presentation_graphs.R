@@ -44,58 +44,6 @@ state = center_flower_df$state
 
 #################################  altitude analysis ###########################
 
-### load packages
-library(raster)
-library(sp)
-library(sf)
-
-### loading spp coordinates
-spp_points=read.table("0_data/spp_points_7km.csv", header =T, sep=",",  na.strings = "NA", fill=T)
-
-### load altitude raster
-ras_alt = raster("0_data/rasters/altitude.gri")
-
-### altitude values per species
-# extarct values
-alt_values = raster::extract(ras_alt ,spp_points[,2:3])
-# center to species
-center_alt_values = aggregate(alt_values, by=list(spp_points$species), function(x){median(x, na.rm=T)} )
-# keep only species with sampled flowers
-spp_altitude = center_alt_values[center_alt_values$Group.1 %in% sampled_species,]
-# name columns
-colnames(spp_altitude) = c("species", "altitude")
-# add states
-spp_altitude = data.frame(state, spp_altitude)
-# export
-write.table(spp_altitude, "2_comparative_analyses/spp_altitude.csv", sep=",", row.names= F, quote = F)
-
-### testing altitude difference
-# difference per distribution
-center_sp_alt = aggregate(spp_altitude$altitude, by= list(spp_altitude$state), median)
-dispersion_sp_alt = aggregate(spp_altitude$altitude, by= list(spp_altitude$state), IQR)
-
-# source permutation test
-source("function_permutation_test.R")
-permutation_test(factor= spp_altitude$state, response= spp_altitude$altitude,iter=999, out_dir = "2_comparative_analyses", name= "altitude.tiff")
-
-### plotting
-# text size
-axis_title_size = 10
-x_text_size = 8
-# plot
-tiff("2_comparative_analyses/altitude_per_distribution.tiff", units="in", width=3.5, height=3, res=600)
-ggplot(data= spp_altitude, aes(x=state, y=altitude, fill= state)) +
-  geom_point(aes(color=state),position = position_jitter(width = 0.07), size = 1.5, alpha = 0.25) +
-  geom_boxplot(width = 0.2, outlier.shape = NA, alpha = 0.25)+
-  geom_flat_violin(position = position_nudge(x = 0.12, y = 0), alpha = 0.25) +
-  scale_fill_manual(values=mycols)+
-  scale_colour_manual(values=mycols)+
-  ylim(c(0,1500))+
-  xlab("geographic distribution")+ ylab("species' elevation (m)")+
-  scale_x_discrete(labels=c("AF" = "AF-endemic", "other" = "non-endemic"))+
-  theme(panel.background=element_rect(fill="white"), panel.grid=element_line(colour=NULL),panel.border=element_rect(fill=NA,colour="black"),axis.title=element_text(size=axis_title_size,face="bold"),axis.text.x=element_text(size=x_text_size),axis.text.y = element_text(angle = 90),legend.position = "none")
-dev.off()
-
 
 ############################### fitting DEC #################################
 # reading range data

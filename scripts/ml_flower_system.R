@@ -114,7 +114,7 @@ data_ms3 = data %>%
 ### function to set train and test
 set_train_test = function(data){
   list = list()
-  set.seed(1) 
+  set.seed(40) 
   ind = sample(2, size = nrow(data), replace = T, prob = c(0.4, 0.6))
   list$train = data[ind==2,]
   list$test = data[ind==1,]
@@ -125,9 +125,9 @@ set_train_test = function(data){
 dt = data_ps
 dt = data_ms2
 
-# ### exclude nectar?
-# dt = dt %>%
-#   select(!nectar)
+### exclude nectar?
+dt = dt %>%
+  select(!nectar)
 
 ### separating train and test
 list = set_train_test(data = dt)
@@ -185,6 +185,7 @@ spp_pore = spp_cogn %>%
   ) %>% 
   select(species, pore_size)
 
+### organizing features
 my_traits = center_flower_df %>% 
   plyr::join(y = spp_pore, type = "left", by = "species") %>% 
   rename(dimetrism = stamen_dim) %>% 
@@ -197,7 +198,7 @@ species = center_flower_df$species
 pred_class_df = data.frame(geo_state, species, my_pred)
 
 ### exporting
-write.table(pred_class_df, "1_flower_analyses/pred_class_mat2.csv", sep=",", row.names = F)
+write.table(pred_class_df, "1_flower_analyses/pred_class_mating2.csv", sep=",", row.names = F)
 
 ############################# comparing classes ################################
 
@@ -218,31 +219,47 @@ pred_df= pred_class %>%
   group_by(geo_state) %>% 
   mutate(perc = 100* value/sum(value) )
 
+### parâmetros do plot
+axis_title_size = 10
+x_text_size = 8
+y_text_size = 8
+legend_text_size = 8
+legend_key_size = 0.3
+
 ### plotting
-ggplot(data = pred_df) + 
+pred_plot = ggplot(data = pred_df) + 
   
   geom_bar(aes(x = geo_state, 
                y = perc, 
-               fill = pollination),
+               fill = pollination,
+               color = geo_state),
            stat = "identity", 
-           width = 0.9, 
-           alpha=0.75) +
+           width = 0.9,
+           size = 1.5,
+           alpha = 0.75) +
   
   scale_fill_manual(values = c("gray", "black") )+
+  
+  scale_color_manual(values = c("#1E88E5","#D81B60") )+
   
   xlab("Geographic distribution") +
   
   ylab("frequency of pollination systems (%)") +
   
-  guides(fill=guide_legend(title="Pollination system")) +
+  guides(fill=guide_legend(title="Pollination system:")) +
+  guides(color = "none")+
   
-  theme(panel.background=element_rect(fill="white"), 
+  theme(panel.background=element_rect(fill="white"),
         panel.grid=element_line(colour=NULL),
         panel.border=element_rect(fill=NA,colour="black"),
         axis.title=element_text(size=axis_title_size, face="bold"),
         axis.text.x= element_text(size= x_text_size),
         axis.text.y = element_text(size=y_text_size, angle = 0),
         legend.position = "bottom",
-        legend.title = element_blank(),
         legend.text = element_text(size= legend_text_size),
         legend.key.size = unit(legend_key_size, 'cm'))
+
+# export plot
+tiff("pred_plot.tiff", units="cm", width=7, height=6.5, res=600)
+  print(pred_plot)
+dev.off()
