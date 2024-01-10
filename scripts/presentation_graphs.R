@@ -23,9 +23,8 @@ library(reshape2)
 dir_check = dir.exists(paths="3_graphs")
 # create dir if not created yet
 if (dir_check == FALSE){
-  dir.create(path= "4_presentation_graphs", showWarnings = , recursive = FALSE, mode = "0777")
+  dir.create(path= "3_graphs")
 }
-
 
 ### phylogenetic tree location
 trfn ="2_comparative_analyses/pruned_mcc_phylo.nwk"
@@ -41,8 +40,81 @@ center_flower_df = read.table("1_flower_analyses/center_flower_df.csv", sep=",",
 sampled_species = center_flower_df$species
 # geographic state
 state = center_flower_df$state
+#species and geo states
+spp_state = center_flower_df %>% 
+  select(species, geo_state)
+
+tr_order = c("cyathanthera","cipoensis","cubatanensis","capixaba", "discolor",
+             "budlejoides", "racemifera", "fasciculata", "pepericarpa", 
+             "willdenowii", "flammea", "formosa", "cinerascens", "sclerophylla",
+             "corallina", "shepherdii", "petroniana", "castaneiflora", "lymanii",
+             "hyemalis", "multispicata", "valtheri", "ruficalyx", "lepidota",
+             "polyandra", "macrothyrsa", "heliotropoides", "dispar", "ferruginata",
+             "burchellii", "tiliifolia", "rufescens", "punctata", "dichrophylla",
+             "chrysophylla", "cowanii", "amnicola", "longispicata", "fallax",
+             "stenostachya", "pterocaulon", "macuxi", "mayarae", "argyrophylla",
+             "alborufescens", "serialis", "secundiflora", "navioensis", "hypoleuca",
+             "lourteigiana", "albicans")
 
 #################################  altitude analysis ###########################
+
+### read altitude values
+spp_alt = read.table("0_data/spp_alt_values.csv", sep=",", h=T)
+
+### summarize by species
+med_alt = spp_alt %>% 
+  group_by(spp_points.species) %>% 
+  reframe(alt = median(spp_alt_values),
+          iqr = IQR(spp_alt_values)
+          ) %>% 
+  dplyr::rename(species = spp_points.species) %>% 
+  mutate(species = factor(species, levels = rev(tr_order) ))
+
+###
+med_alt = med_alt %>% 
+  plyr::join(y = spp_state, type = "left", by = "species") %>% 
+  filter(!is.na(geo_state))
+
+
+### ploting
+alt_plot = ggplot(data= med_alt, 
+                  aes(x=species, 
+                      y= alt)
+                  ) +
+  
+  geom_point(aes(color=geo_state),
+             size = 1, 
+             alpha = 0.65,
+             position = position_jitter(width = 0.07)
+             ) +
+  
+  geom_linerange(aes(ymin = alt-(iqr/2), 
+                     ymax = alt+(iqr/2),
+                     color=geo_state)
+                 )+
+  ylim(0, 1600)+
+  
+  scale_color_manual(values = c("#1E88E5","#D81B60") )+
+  
+  coord_flip() +
+  
+  xlab("") +
+  ylab("elevation (m)") +
+  
+  theme(panel.background=element_rect(fill="white"),
+        panel.grid=element_line(colour=NULL),
+        panel.border=element_rect(fill=NA,colour="black"),
+        axis.title=element_text(size=8, face="bold"),
+        axis.text.x = element_text(size= 4, angle = 45),
+        axis.text.y = element_text(size= 5, angle = 0),
+        legend.position = "none"
+        )
+
+# export plot
+tiff("3_graphs/alt_plot.tiff",
+     units="cm", width=3, height=10, res=600)
+  print(alt_plot)
+dev.off()
 
 
 ############################### fitting DEC #################################
@@ -112,15 +184,33 @@ range(trait)
 tiff("3_graphs/dec_mcc_ranges_3.tiff", units="in", width=3, height=6, res=600)
   plotTree(tree=tr,fsize=0.75, ftype="i")
   tiplabels(pie=tip_states_probs, piecol=state_cols, cex=0.75)
-  nodelabels(node=(1+n_tips):(n_tips+n_inner_nodes), pie= inner_node_probs, piecol=state_cols, cex=1.5)
-  axisPhylo(pos=c(0.5), font=3, cex.axis=0.5)
+  nodelabels(node=(1+n_tips):(n_tips+n_inner_nodes), 
+             pie= inner_node_probs, 
+             piecol=state_cols, 
+             cex=1.5)
+  axisPhylo(pos=c(0.5), 
+            font=3, 
+            cex.axis=0.5)
 dev.off()
 
 tiff(paste0("3_graphs/",trait_name,".tiff"), units="in", width=3.5, height=6, res=600)
-  plotTree.wBars(tree=tr, x=trait,fsize=0.75, col=bar_colors, scale=2, ftype="i", method="plotTree")
-  tiplabels(pie=tip_states_probs, piecol=state_cols, cex=0.5)
-  nodelabels(node=(1+n_tips):(n_tips+n_inner_nodes), pie= inner_node_probs, piecol=state_cols, cex=1)
-  axisPhylo(pos=c(0.5), font=3, cex.axis=0.5)
+  plotTree.wBars(tree=tr, 
+                 x=trait,
+                 fsize=0.75, 
+                 col=bar_colors, 
+                 scale=2, 
+                 ftype="i", 
+                 method="plotTree")
+  tiplabels(pie=tip_states_probs, 
+            piecol=state_cols, 
+            cex=0.5)
+  nodelabels(node=(1+n_tips):(n_tips+n_inner_nodes),
+             pie= inner_node_probs, 
+             piecol=state_cols,
+             cex=1)
+  axisPhylo(pos=c(0.5), 
+            font=3, 
+            cex.axis=0.5)
 dev.off()
 
 

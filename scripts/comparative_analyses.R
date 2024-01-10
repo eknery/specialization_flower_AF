@@ -9,10 +9,8 @@ library(cladoRcpp)
 library(BioGeoBEARS)
 
 ### require other packages
-library(tidyverse)
-library(dplyr)
-library(tidyr)
-library(ggplot2)
+if (!require("tidyverse")) install.packages("tidyverse"); require("tidyverse")
+if (!require("ggplot2")) install.packages("ggplot2"); library("ggplot2")
 library(ggpubr)
 library(PupillometryR)
 library(RColorBrewer)
@@ -335,7 +333,12 @@ for (trait_name in all_trait_names){ ##
       scale_colour_manual(values=mycols)+
       xlab("geographic distribution")+ ylab(param_name)+
       scale_x_discrete(labels=c("AF" = "AF-endemic", "other" = "non-endemic")) +
-      theme(panel.background=element_rect(fill="white"), panel.grid=element_line(colour=NULL), panel.border=element_rect(fill=NA,colour="black"), axis.title=element_text(size=10,face="bold"), axis.text=element_text(size=6), legend.position = "none") 
+      theme(panel.background=element_rect(fill="white"), 
+            panel.grid=element_line(colour=NULL),
+            panel.border=element_rect(fill=NA,colour="black"), 
+            axis.title=element_text(size=10,face="bold"), 
+            axis.text=element_text(size=6), 
+            legend.position = "none") 
    # export plot
     tiff(paste(dir, "/",param_name, ".tiff", sep=""), units="in", width=2.5, height=2, res=600)
       print(plot_param)

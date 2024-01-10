@@ -21,6 +21,10 @@ n_ms = pmd %>%
   filter( !is.na(hand_self_fruiting_perc) & !is.na(bagged_fruiting_perc) ) %>% 
   nrow()
 
+n_out = pmd %>% 
+  filter( hand_self_fruiting_perc ==0  & bagged_fruiting_perc==0 ) %>% 
+  nrow()
+
 n_self_apo = pmd %>% 
   filter( hand_self_fruiting_perc >  0 & bagged_fruiting_perc >  0) %>% 
   nrow()
@@ -56,8 +60,6 @@ system = pmd  %>%
       hand_self_fruiting_perc >  0 ~ "selfer",
       TRUE                         ~ NA
     ),
-    ms3 = hand_self_fruiting_perc,
- 
     pore_size = case_when(
       Cogniaux %in% large_pores    ~ 1,
       !Cogniaux %in% large_pores   ~ 0,
@@ -103,11 +105,6 @@ data_ms2 = data %>%
   distinct(species, .keep_all = TRUE) %>% 
   select(any_of(c("nectar","flower_size", "dimetrism", "pore_size", "herkogamy", "target") ) ) 
 
-data_ms3 = data %>% 
-  filter(!is.na(ms3)) %>% 
-  mutate(target = ms3) %>% 
-  distinct(species, .keep_all = TRUE) %>% 
-  select(any_of(c("nectar","flower_size", "dimetrism", "pore_size", "herkogamy", "target") ) ) 
 
 ################################## Random Forest ##############################
 
@@ -157,6 +154,7 @@ importance(rf)
 dummy = function(data, target){
   target = data[[target]]
   n = length(target)
+  set.seed(40) 
   pred = sample(target, size = n)
   return(pred)
 }
@@ -219,12 +217,12 @@ pred_df= pred_class %>%
   group_by(geo_state) %>% 
   mutate(perc = 100* value/sum(value) )
 
-### parâmetros do plot
-axis_title_size = 10
-x_text_size = 8
-y_text_size = 8
-legend_text_size = 8
-legend_key_size = 0.3
+### plot param
+axis_title_size = 8
+x_text_size = 6
+y_text_size = 6
+legend_text_size = 6
+legend_key_size = 0.4
 
 ### plotting
 pred_plot = ggplot(data = pred_df) + 
@@ -235,18 +233,21 @@ pred_plot = ggplot(data = pred_df) +
                color = geo_state),
            stat = "identity", 
            width = 0.9,
-           size = 1.5,
+           linewidth = 0.8,
            alpha = 0.75) +
+  
+  scale_x_discrete(labels=c("AF" = "AF-endemic", 
+                            "other" = "non-endemic"))+
   
   scale_fill_manual(values = c("gray", "black") )+
   
   scale_color_manual(values = c("#1E88E5","#D81B60") )+
   
-  xlab("Geographic distribution") +
+  xlab("geographic distribution") +
   
-  ylab("frequency of pollination systems (%)") +
+  ylab("relative frequency (%)\n of pollination systems") +
   
-  guides(fill=guide_legend(title="Pollination system:")) +
+  guides(fill=guide_legend(title="")) +
   guides(color = "none")+
   
   theme(panel.background=element_rect(fill="white"),
@@ -257,9 +258,10 @@ pred_plot = ggplot(data = pred_df) +
         axis.text.y = element_text(size=y_text_size, angle = 0),
         legend.position = "bottom",
         legend.text = element_text(size= legend_text_size),
+        legend.key = element_blank(),
         legend.key.size = unit(legend_key_size, 'cm'))
 
 # export plot
-tiff("pred_plot.tiff", units="cm", width=7, height=6.5, res=600)
+tiff("3_graphs/pred_plot.tiff", units="cm", width=7, height=6.5, res=600)
   print(pred_plot)
 dev.off()
