@@ -121,7 +121,8 @@ trait_plot = ggplot(data= center_flower_df, aes(x=geo_state,
         legend.position = "none") 
 
 # export plot
-tiff("3_graphs/herkogamy_plot.tiff", units="cm", width=3.75, height=3, res=600)
+tiff("3_graphs/herkogamy_plot.tiff", 
+     units="cm", width=3.75, height=3, res=600)
   print(trait_plot)
 dev.off()
 

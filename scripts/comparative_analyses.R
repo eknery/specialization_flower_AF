@@ -1,14 +1,14 @@
 ### require analytical packages
-library(ape)
-library(phytools)
+if (!require("ape")) install.packages("ape"); library("ape")
+if (!require("phytools")) install.packages("phytools"); library("phytools")
 library(geiger)
 library(OUwie)
-library(nlme)
+
 library(rexpokit)
 library(cladoRcpp)
 library(BioGeoBEARS)
 
-### require other packages
+### require overall packages
 if (!require("tidyverse")) install.packages("tidyverse"); require("tidyverse")
 if (!require("ggplot2")) install.packages("ggplot2"); library("ggplot2")
 library(ggpubr)
@@ -16,7 +16,7 @@ library(PupillometryR)
 library(RColorBrewer)
 library(reshape2)
 
-### load flower pc scores
+### load flower traits
 center_flower_df = read.table("1_flower_analyses/center_flower_df.csv", sep=",", h=T)
 # choose flower proxy!
 flower_proxy = center_flower_df
@@ -245,7 +245,7 @@ wn_best_df = data.frame(all_trait_names, wn_best_percent)
 wn_best_df
 
 ### export
-write.table(wn_best_df, "2_comparative_analyses/WN/wn_best_df", sep=",",quote=F, row.names=F)
+write.table(wn_best_df, "2_comparative_analyses/WN/wn_best_df.csv", sep=",",quote=F, row.names=F)
 
 
 ############################## describing best-fit model #########################
@@ -256,8 +256,11 @@ all_trait_names = list.files("2_comparative_analyses/OUWIE")
 # my colors
 mycols = c( "#1E88E5", "#D81B60")
 
+all_trait_names = c("flower_size", "rel_pore_size", "stamen_dim", "herkogamy")
+
 ### loop over all traits
 for (trait_name in all_trait_names){ ## 
+  
   ### setting output dir
   dir = paste("2_comparative_analyses/OUWIE/",trait_name, sep="")
   ### load model fit and estimates
@@ -327,8 +330,11 @@ for (trait_name in all_trait_names){ ##
     if (dw_sum != 0){  param_df = param_df[param_df$parameter > dw_bound,] }
     # plot parameter
     plot_param = ggplot(data= param_df, aes(x=state, y=parameter, fill=state)) +
-      geom_point(aes(color=state),position = position_jitter(width = 0.07), size = 1, alpha = 0.65) +
-      geom_boxplot(width = 0.4, outlier.shape = NA, alpha = 0.25)+
+      geom_point(aes(color=state),
+                 position = position_jitter(width = 0.07), 
+                 size = 1, 
+                 alpha = 0.65) +
+      geom_boxplot(width = 0.5, outlier.shape = NA, alpha = 0.25)+
       scale_fill_manual(values=mycols)+
       scale_colour_manual(values=mycols)+
       xlab("geographic distribution")+ ylab(param_name)+
@@ -336,11 +342,12 @@ for (trait_name in all_trait_names){ ##
       theme(panel.background=element_rect(fill="white"), 
             panel.grid=element_line(colour=NULL),
             panel.border=element_rect(fill=NA,colour="black"), 
-            axis.title=element_text(size=10,face="bold"), 
-            axis.text=element_text(size=6), 
+            axis.title=element_text(size=12,face="bold"), 
+            axis.text=element_text(size=10), 
             legend.position = "none") 
    # export plot
-    tiff(paste(dir, "/",param_name, ".tiff", sep=""), units="in", width=2.5, height=2, res=600)
+    tiff(paste(dir, "/",param_name, ".tiff", sep=""), 
+         units="cm", width=7.5, height=7, res=600)
       print(plot_param)
     dev.off()
   }

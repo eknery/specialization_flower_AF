@@ -65,16 +65,20 @@ spp_alt = read.table("0_data/spp_alt_values.csv", sep=",", h=T)
 med_alt = spp_alt %>% 
   group_by(spp_points.species) %>% 
   reframe(alt = median(spp_alt_values),
-          iqr = IQR(spp_alt_values)
+          q1 = quantile(spp_alt_values, prob = 0.25),
+          q3 = quantile(spp_alt_values, prob = 0.75)
           ) %>% 
   dplyr::rename(species = spp_points.species) %>% 
   mutate(species = factor(species, levels = rev(tr_order) ))
 
-###
+### 
 med_alt = med_alt %>% 
   plyr::join(y = spp_state, type = "left", by = "species") %>% 
   filter(!is.na(geo_state))
 
+med_alt %>% 
+  group_by(geo_state) %>% 
+  reframe(median(alt), IQR(alt))
 
 ### ploting
 alt_plot = ggplot(data= med_alt, 
@@ -88,8 +92,8 @@ alt_plot = ggplot(data= med_alt,
              position = position_jitter(width = 0.07)
              ) +
   
-  geom_linerange(aes(ymin = alt-(iqr/2), 
-                     ymax = alt+(iqr/2),
+  geom_linerange(aes(ymin = q1, 
+                     ymax = q3,
                      color=geo_state)
                  )+
   ylim(0, 1600)+
@@ -104,7 +108,8 @@ alt_plot = ggplot(data= med_alt,
   theme(panel.background=element_rect(fill="white"),
         panel.grid=element_line(colour=NULL),
         panel.border=element_rect(fill=NA,colour="black"),
-        axis.title=element_text(size=8, face="bold"),
+        axis.title.x = element_blank(),
+        axis.title.y=element_text(size=6, face="bold"),
         axis.text.x = element_text(size= 4, angle = 45),
         axis.text.y = element_text(size= 5, angle = 0),
         legend.position = "none"
@@ -112,7 +117,7 @@ alt_plot = ggplot(data= med_alt,
 
 # export plot
 tiff("3_graphs/alt_plot.tiff",
-     units="cm", width=3, height=10, res=600)
+     units="cm", width=3, height=9.50, res=600)
   print(alt_plot)
 dev.off()
 

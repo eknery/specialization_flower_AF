@@ -2,10 +2,16 @@
 
 if (!require("tidyverse")) install.packages("tidyverse"); require("tidyverse")
 if (!require("ggplot2")) install.packages("ggplot2"); library("ggplot2")
-if (!require("caret")) install.packages("caret"); library("caret")
 if (!require("randomForest")) install.packages("randomForest"); library("randomForest")
+if (!require("caret")) install.packages("caret"); library("caret")
+if (!require("Metrics")) install.packages("Metrics"); library("Metrics")
+if (!require("ape")) install.packages("ape"); library("ape")
+if (!require("phytools")) install.packages("phytools"); library("phytools")
 
 ################################ loading data ###############################
+
+### load mcc phylogeentic tree
+mcc_phylo = read.tree("2_comparative_analyses/pruned_mcc_phylo.nwk")
 
 ### pollination and mating system data
 pmd = read.table("0_data/pollination_mating_data.csv", sep= ",", header= T, fill= T)
@@ -17,27 +23,21 @@ trait  = readxl::read_xlsx(path= trait_path, sheet= 3 )
 
 ############################## evaluating some patterns #######################
 
-n_ms = pmd %>% 
-  filter( !is.na(hand_self_fruiting_perc) & !is.na(bagged_fruiting_perc) ) %>% 
-  nrow()
+ms_summary = pmd %>% 
+  reframe(
+    n_ms = sum( !is.na(hand_self_fruiting_perc) & !is.na(bagged_fruiting_perc) ),
+    n_out = sum( hand_self_fruiting_perc ==0  & 
+                   bagged_fruiting_perc==0 , na.rm = T),
+    n_self_apo = sum( hand_self_fruiting_perc >  0 &
+                        bagged_fruiting_perc >  0, na.rm = T),
+    n_self = sum( hand_self_fruiting_perc >  0 &
+                    bagged_fruiting_perc ==  0, na.rm = T), 
+    n_apo = sum( hand_self_fruiting_perc ==  0 & 
+                   bagged_fruiting_perc >  0, na.rm = T)
+  )
 
-n_out = pmd %>% 
-  filter( hand_self_fruiting_perc ==0  & bagged_fruiting_perc==0 ) %>% 
-  nrow()
 
-n_self_apo = pmd %>% 
-  filter( hand_self_fruiting_perc >  0 & bagged_fruiting_perc >  0) %>% 
-  nrow()
-
-n_self = pmd %>% 
-  filter( hand_self_fruiting_perc >  0 & bagged_fruiting_perc ==  0) %>% 
-  nrow()
-
-n_apo = pmd %>% 
-  filter( hand_self_fruiting_perc ==  0 & bagged_fruiting_perc >  0) %>% 
-  nrow()
-
-############################### processing data ##############################
+################# processing pollinating and mating systems ####################
 
 large_pores = c("cremanium", "chaenopleura","glossocentrum", "hypoxanthus")
 
@@ -51,9 +51,10 @@ system = pmd  %>%
       TRUE                                                ~ NA
     ),
     ms1 = case_when(
-      hand_self_fruiting_perc == 0 & bagged_fruiting_perc == 0 ~ "dependent",
-      hand_self_fruiting_perc >  0 | bagged_fruiting_perc >  0 ~ "independent",
-      TRUE                                                     ~ NA
+      bagged_fruiting_perc >  0 &
+        hand_self_fruiting_perc > 0  ~ bagged_fruiting_perc,
+      bagged_fruiting_perc ==  0 &
+        hand_self_fruiting_perc > 0  ~ NA
     ),
     ms2 = case_when(
       hand_self_fruiting_perc == 0 & bagged_fruiting_perc == 0 ~ "outcrosser",
@@ -66,65 +67,96 @@ system = pmd  %>%
       TRUE                         ~ NA
     ),
   ) %>% 
-  select(species, pore_size, nectar, ps, ms1, ms2, ms3)
+  select(species, pore_size, nectar, ps, ms1, ms2)
 
 
-### floral traits
-flw = trait %>% 
+########################## processing floral traits ############################
+
+### Melastom traits
+flw1 = trait %>% 
   filter(Genus == "Miconia" & Species %in% full_names) %>% 
   mutate(
     species = Species,
     flower_size = Style_length_mean,
-    dimetrism = (Stamen_length_antesepal_mean - Stamen_length_antepetal_mean)/Stamen_length_antesepal_mean,
+    stamen_dim = (Stamen_length_antesepal_mean - Stamen_length_antepetal_mean)/Stamen_length_antesepal_mean,
     herkogamy = Style_length_mean - Stamen_length_antepetal_mean
   ) %>% 
-  select(species, flower_size, dimetrism, herkogamy) %>% 
+  select(species, flower_size, stamen_dim, herkogamy) %>% 
   filter(!is.na(flower_size))
 
-### join floral traits and system data
-data = flw %>% 
-  plyr::join(y = system, type = "left", by = "species")
 
-### data for pollination syetem
+####################### join floral traits and system data #####################
+
+### join floral traits and system data
+data = system %>% 
+  plyr::join(y = flw1, type = "left", by = "species") 
+
+### ML vars
+vars = c("nectar","flower_size", "pore_size", "stamen_dim", "herkogamy", "target")
+
+### data for pollination system
 data_ps = data %>% 
-  filter(!is.na(ps)) %>% 
+  filter(!is.na(ps) & !is.na(flower_size) ) %>% 
   mutate(target = factor(ps, levels = c("generalist", "specialist") )) %>% 
   distinct(species, .keep_all = TRUE) %>% 
-  select(any_of(c("nectar","flower_size", "dimetrism","pore_size", "herkogamy", "target") ) )
+  select(any_of(vars) )
  
-### data for mating system
+### data for mating system 1
 data_ms1 = data %>% 
-  filter(!is.na(ms1)) %>% 
-  mutate(target = factor(ms1, levels = c("independent", "dependent"))) %>% 
+  filter(!is.na(ms1) & !is.na(flower_size)) %>% 
+  mutate(target = ms1) %>% 
   distinct(species, .keep_all = TRUE) %>% 
-  select(any_of(c("nectar","flower_size", "dimetrism", "pore_size", "herkogamy", "target") ) ) 
+  select(any_of(vars ) ) 
 
+### data for mating system 2
 data_ms2 = data %>% 
-  filter(!is.na(ms2)) %>% 
+  filter(!is.na(ms2) & !is.na(flower_size)) %>% 
   mutate(target = factor(ms2, levels = c("selfer", "outcrosser"))) %>% 
   distinct(species, .keep_all = TRUE) %>% 
-  select(any_of(c("nectar","flower_size", "dimetrism", "pore_size", "herkogamy", "target") ) ) 
+  select(any_of(vars) ) 
 
+### shuffling function
+shuffle = function(data){
+  set.seed(41)
+  sdata = data[sample(1:nrow(data)), ]
+  return(sdata)
+}
+
+### shuffling
+data_ms1 = shuffle(data = data_ms1)
+data_ms2 = shuffle(data = data_ms2)
 
 ################################## Random Forest ##############################
 
 ### function to set train and test
 set_train_test = function(data){
   list = list()
-  set.seed(40) 
-  ind = sample(2, size = nrow(data), replace = T, prob = c(0.4, 0.6))
+  set.seed(41) 
+  ind = sample(2, size = nrow(data), replace = T, prob = c(0.6, 0.4))
   list$train = data[ind==2,]
   list$test = data[ind==1,]
   return(list)
 }
 
+target = "ms1"
+nectar_exclude = F
+
 ### choose which dataset
-dt = data_ps
-dt = data_ms2
+if(target == "ps"){
+  dt = data_ps
+}
+if(target == "ms1"){
+  dt = data_ms1
+}
+if(target == "ms2"){
+  dt = data_ms2
+}
 
 ### exclude nectar?
-dt = dt %>%
-  select(!nectar)
+if(nectar_exclude){
+  dt = dt %>%
+    select(!nectar)
+}
 
 ### separating train and test
 list = set_train_test(data = dt)
@@ -137,33 +169,42 @@ rf = randomForest(formula = target ~ . ,
                   proximity = T) 
 
 ### predictions
-pred <- predict(rf, test)
+pred = predict(rf, test)
 
 ### confusion matrix
-confusionMatrix(pred, test$target)
-
-### improtance plot
-varImpPlot(rf,
-           sort = F,
-           main = "Variable Importance")
+if(target == "ps"){
+  confusionMatrix(pred, test$target)
+}
+if(target == "ms1"){
+  mae(pred, test$target)
+}
 
 ### importance list
 importance(rf)
 
-### setting a dummy model
-dummy = function(data, target){
-  target = data[[target]]
-  n = length(target)
-  set.seed(40) 
-  pred = sample(target, size = n)
+### improtance plot
+varImpPlot(rf,
+           sort = F,
+           main = paste0("Variable Importance ", target))
+
+############################## dummy model ###################################
+
+dummy_model = function(train, test, target){
+  values = train[[target]]
+  set.seed(41) 
+  pred = values[sample(nrow(test), replace= F)]
   return(pred)
 }
 
-### dummy prediction
-dummy_pred = dummy(data = test, target = "target")
-
-### confusion matrix for dummy
-confusionMatrix(dummy_pred, test$target)
+### dummy evaluation 
+if (target == "ps"){
+  dummy_pred = dummy_model(train = train, test = test, target = "target")
+  confusionMatrix(dummy_pred, test$target)
+}
+if (target == "ms1"){
+  dummy_pred = dummy_model(train = train, test = test, target = "target")
+  mae(dummy_pred, test$target)
+}
 
 ############################### predicting classes ###########################
 
@@ -186,29 +227,35 @@ spp_pore = spp_cogn %>%
 ### organizing features
 my_traits = center_flower_df %>% 
   plyr::join(y = spp_pore, type = "left", by = "species") %>% 
-  rename(dimetrism = stamen_dim) %>% 
-  select(flower_size, pore_size, dimetrism, herkogamy)
+  select(flower_size, pore_size, stamen_dim, herkogamy)
+
+###
+rf_model = randomForest(formula = target ~ . , 
+                  data = dt, 
+                  proximity = T) 
 
 ### orgnaizing into data frame 
-my_pred = predict(rf, my_traits)
+my_pred = predict(rf_model, my_traits)
 geo_state = center_flower_df$geo_state
 species = center_flower_df$species
-pred_class_df = data.frame(geo_state, species, my_pred)
+pred_df = data.frame(geo_state, species, my_pred)
 
+### table name
+dir_name = paste0("1_flower_analyses/pred_class_",target,".csv")
 ### exporting
-write.table(pred_class_df, "1_flower_analyses/pred_class_mating2.csv", sep=",", row.names = F)
+write.table(pred_df, dir_name, sep=",", row.names = F)
 
-############################# comparing classes ################################
+############################# plotting ps predictions ############################
 
 ### load flower pc scores
-pred_class = read.table("1_flower_analyses/pred_class_pollin.csv", sep=",", h=T)
+pred_df = read.table("1_flower_analyses/pred_class_ps.csv", sep=",", h=T)
 
 ### testing differences
-tab = table(pred_class$geo_state, pred_class$my_pred)
+tab = table(pred_df$geo_state, pred_df$my_pred)
 chisq.test(tab)
 
 ### summarizing
-pred_df= pred_class %>% 
+pred_df= pred_df %>% 
   group_by(geo_state) %>% 
   reframe(generalist = sum(my_pred == "generalist"),
          specialist = sum(my_pred == "specialist"),
@@ -262,6 +309,77 @@ pred_plot = ggplot(data = pred_df) +
         legend.key.size = unit(legend_key_size, 'cm'))
 
 # export plot
-tiff("3_graphs/pred_plot.tiff", units="cm", width=7, height=6.5, res=600)
+tiff("3_graphs/pred_plot_ps.tiff", units="cm", width=7, height=6.5, res=600)
+  print(pred_plot)
+dev.off()
+
+############################# plotting ms predictions ############################
+
+### load flower pc scores
+pred_df = read.table("1_flower_analyses/pred_class_ms1.csv", sep=",", h=T)
+
+### exploring differences
+pred_df %>% 
+  group_by(geo_state) %>% 
+  reframe(mean(my_pred), sd(my_pred), median(my_pred))
+
+### testing differences
+my_pred = pred_df$my_pred
+geo_state = pred_df$geo_state
+names(my_pred) = pred_df$species
+names(geo_state) = pred_df$species
+
+paov = phylANOVA(tree = mcc_phylo, 
+          x = geo_state ,
+          y = my_pred,
+          posthoc = F)
+
+### plot param
+axis_title_size = 8
+x_text_size = 6
+y_text_size = 6
+legend_text_size = 6
+legend_key_size = 0.4
+
+### plotting
+pred_plot = ggplot(data = pred_df,
+                   aes(x=geo_state, 
+                       y=my_pred, 
+                       fill=geo_state)) + 
+  
+  geom_point(aes(color=geo_state),
+             position = position_jitter(width = 0.07), 
+             size = 1.2, 
+             alpha = 0.65) +
+  
+  geom_boxplot(width = 0.5, 
+               outlier.shape = NA,
+               alpha = 0.25)+
+  
+  scale_fill_manual(values=c("#1E88E5","#D81B60"))+
+  scale_colour_manual(values=c("#1E88E5","#D81B60"))+
+  scale_x_discrete(labels=c("AF" = "AF-endemic", 
+                            "other" = "non-endemic")) +
+  
+  xlab("geographic distribution") +
+  
+  ylab("relative frequency (%)\n of self pollination") +
+  
+  guides(fill=guide_legend(title="")) +
+  guides(color = "none")+
+  
+  theme(panel.background=element_rect(fill="white"),
+        panel.grid=element_line(colour=NULL),
+        panel.border=element_rect(fill=NA,colour="black"),
+        axis.title=element_text(size=axis_title_size, face="bold"),
+        axis.text.x= element_text(size= x_text_size),
+        axis.text.y = element_text(size=y_text_size, angle = 0),
+        legend.position = "bottom",
+        legend.text = element_text(size= legend_text_size),
+        legend.key = element_blank(),
+        legend.key.size = unit(legend_key_size, 'cm'))
+
+# export plot
+tiff("3_graphs/pred_plot_ms.tiff", units="cm", width=7, height=6.5, res=600)
   print(pred_plot)
 dev.off()
