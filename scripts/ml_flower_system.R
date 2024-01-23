@@ -266,8 +266,8 @@ pred_df= pred_df %>%
 
 ### plot param
 axis_title_size = 8
-x_text_size = 6
-y_text_size = 6
+x_text_size = 7
+y_text_size = 7
 legend_text_size = 6
 legend_key_size = 0.4
 
@@ -336,8 +336,8 @@ paov = phylANOVA(tree = mcc_phylo,
 
 ### plot param
 axis_title_size = 8
-x_text_size = 6
-y_text_size = 6
+x_text_size = 7
+y_text_size = 7
 legend_text_size = 6
 legend_key_size = 0.4
 
