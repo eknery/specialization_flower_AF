@@ -1,8 +1,8 @@
 ### require analytical packages
 if (!require("ape")) install.packages("ape"); library("ape")
 if (!require("phytools")) install.packages("phytools"); library("phytools")
-library(geiger)
-library(OUwie)
+if (!require("geiger")) install.packages("geiger"); library("geiger")
+if (!require("OUwie")) install.packages("OUwie"); library("OUwie") 
 
 library(rexpokit)
 library(cladoRcpp)
@@ -11,10 +11,9 @@ library(BioGeoBEARS)
 ### require overall packages
 if (!require("tidyverse")) install.packages("tidyverse"); require("tidyverse")
 if (!require("ggplot2")) install.packages("ggplot2"); library("ggplot2")
-library(ggpubr)
-library(PupillometryR)
-library(RColorBrewer)
-library(reshape2)
+if (!require("ggpubr")) install.packages("ggpubr"); library("ggpubr")
+if (!require("PupillometryR")) install.packages("PupillometryR"); library("PupillometryR") 
+if (!require("reshape2")) install.packages("reshape2"); library("reshape2")
 
 ### load flower traits
 center_flower_df = read.table("1_flower_analyses/center_flower_df.csv", sep=",", h=T)

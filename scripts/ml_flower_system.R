@@ -5,13 +5,8 @@ if (!require("ggplot2")) install.packages("ggplot2"); library("ggplot2")
 if (!require("randomForest")) install.packages("randomForest"); library("randomForest")
 if (!require("caret")) install.packages("caret"); library("caret")
 if (!require("Metrics")) install.packages("Metrics"); library("Metrics")
-if (!require("ape")) install.packages("ape"); library("ape")
-if (!require("phytools")) install.packages("phytools"); library("phytools")
 
 ################################ loading data ###############################
-
-### load mcc phylogeentic tree
-mcc_phylo = read.tree("2_comparative_analyses/pruned_mcc_phylo.nwk")
 
 ### pollination and mating system data
 pmd = read.table("0_data/pollination_mating_data.csv", sep= ",", header= T, fill= T)

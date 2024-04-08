@@ -1,16 +1,10 @@
-
 ### laoding libraries
-library(tidyverse)
-library(tidyr)
-library(dplyr)
-library(ggplot2)
-library(ggpubr)
-library(PupillometryR)
-library(RColorBrewer)
-library(reshape2)
-
-###
-set.seed(42)
+if (!require("tidyverse")) install.packages("tidyverse"); library("tidyverse")
+if (!require("dplyr")) install.packages("dplyr"); library("dplyr")
+if (!require("ggplot2")) install.packages("ggplot2"); library("ggplot2")
+if (!require("ggpubr")) install.packages("ggpubr"); library("ggpubr")
+if (!require("PupillometryR")) install.packages("PupillometryR"); library("PupillometryR") 
+if (!require("reshape2")) install.packages("reshape2"); library("reshape2")
 
 ### loading occurrence count per domain
 spp_count_domain = read.table("./0_data/spp_count_domain.csv", h=T, sep=",")
@@ -125,112 +119,4 @@ tiff("3_graphs/herkogamy_plot.tiff",
      units="cm", width=3.75, height=3, res=600)
   print(trait_plot)
 dev.off()
-
-######################## Testing floral trait differences  #####################
-
-### loading species' flower traits
-center_flower_df= read.table("1_flower_analyses/center_flower_df.csv", sep=",", h=T)
-
-### source function
-source("scripts/function_permutation_test.R")
-
-# set factor
-factor = center_flower_df$geo_state
-
-# loop over traits
-all_traits = colnames(center_flower_df)[3:ncol(center_flower_df)]
-all_pvalues = c()
-for(j in 3:ncol(center_flower_df)){
-  trait_name = colnames(center_flower_df)[j]
-  response = as.data.frame(center_flower_df)[,j]
-  pvalue = permutation_test(factor = factor, response = response, stats="median", iter=9999)
-  all_pvalues = c(all_pvalues, pvalue)
-}
-all_pvalues = data.frame(all_traits, all_pvalues)
-all_pvalues
-
-### exporting
-write.table(all_pvalues,"1_flower_analyses/all_pvalues.csv", sep=",", quote=F, row.names=F, col.names=T)
-
-############################## Assessing allometry ############################
-
-### loading species' flower traits
-center_flower_df= read.table("1_flower_analyses/center_flower_df.csv", sep=",", h=T)
-
-###### regarding whole plante
-### height by species
-center_height = aggregate(ftraits$plant_height, by=list(ftraits$species), function(x){median(x, na.rm = T) })
-
-### drop non-height species
-drop_it = which(is.na(center_height$x))
-height = center_height$x[-drop_it]
-flower = center_flower_df[-drop_it,]
-
-### test relationship
-# flower trait
-trait_name = "rel_pore_size"
-trait = flower[,trait_name]
-# boundaries
-bound = sd(trait)*1.96
-max_bound = mean(trait) + bound
-min_bound = mean(trait) - bound
-# remove outliers
-if(sum(trait > max_bound) != 0){
-  drop= which(trait > max_bound)
-  trait = trait[-drop]
-  height = height[-drop]
-}
-if(sum(trait < min_bound) != 0){
-  drop= which(trait < min_bound)
-  trait = trait[-drop]
-  height = height[-drop]
-}
-# fit model
-model = lm(trait ~ height)
-# test significance
-test_model = summary(model)
-r = round(test_model$r.squared, 2) # extract R square
-pvalue = round(test_model$coefficients[,4][2],3)
-# plot
-tiff(paste("1_flower_analyses/allometry_whole_plant/",trait_name, ".tiff", sep=""), units="in", width=3.5, height=4, res=600)
-  plot(x= height, y= trait, xlab= "height (m)", ylab= trait_name, col= "black")
-  abline(model)
-  text (x=8, y =0.15, labels = paste("R2: ",r))
-  text (x=8, y =0.12, labels = paste("p-value: ",pvalue))
-dev.off()
-
-###### within flower
-# flower trait
-flower_size = center_flower_df$flower_size
-trait_name = "rel_pore_size"
-trait = center_flower_df[,trait_name]
-# boundaries
-bound = sd(trait)*1.96
-max_bound = mean(trait) + bound
-min_bound = mean(trait) - bound
-# remove outliers
-if(sum(trait > max_bound) != 0){
-  drop= which(trait > max_bound)
-  trait = trait[-drop]
-  flower_size = flower_size[-drop]
-}
-if(sum(trait < min_bound) != 0){
-  drop= which(trait < min_bound)
-  trait = trait[-drop]
-  flower_size = flower_size[-drop]
-}
-# fit model
-model = lm(trait ~ flower_size)
-# test significance
-test_model = summary(model)
-r = round(test_model$r.squared, 2) # extract R square
-pvalue = round(test_model$coefficients[,4][2],3)
-# plot
-tiff(paste("1_flower_analyses/allometry_within_flower/",trait_name, ".tiff", sep=""), units="in", width=3.5, height=4, res=600)
-  plot(x= flower_size, y= trait, xlab= "flower size (mm)", ylab= trait_name, col= "black")
-  abline(model)
-  text (x=8, y =0.15, labels = paste("R2: ",r))
-  text (x=8, y =0.13, labels = paste("p-value: ",pvalue))
-dev.off()
-
 
