@@ -28,5 +28,9 @@ for (i in 1:length(rand_phylos)){
 }
 #exporting phylogenetic trees
 for (i in 1:length(pruned_phylos)){
-  write.tree(pruned_phylos[[i]], file = paste("3_comparative_analyses/pruned_phylos/pruned_phylo_", as.character(i), sep=""), append = FALSE, digits = 10, tree.names = FALSE)
+  write.tree(pruned_phylos[[i]], 
+             file = paste("3_comparative_analyses/pruned_phylos/pruned_phylo_", as.character(i), sep=""), 
+             append = FALSE, 
+             digits = 10, 
+             tree.names = FALSE)
 }

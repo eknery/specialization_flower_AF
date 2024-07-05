@@ -4,9 +4,9 @@ if (!require("phytools")) install.packages("phytools"); library("phytools")
 if (!require("geiger")) install.packages("geiger"); library("geiger")
 if (!require("OUwie")) install.packages("OUwie"); library("OUwie") 
 
-library(rexpokit)
-library(cladoRcpp)
-library(BioGeoBEARS)
+library("rexpokit")
+library("cladoRcpp")
+library("BioGeoBEARS")
 
 ### require overall packages
 if (!require("tidyverse")) install.packages("tidyverse"); require("tidyverse")
