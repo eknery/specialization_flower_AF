@@ -155,7 +155,7 @@ res_DEC = bears_optim_run(BioGeoBEARS_run_object)
 relprobs_matrix = res_DEC$ML_marginal_prob_each_state_at_branch_top_AT_node
 colnames(relprobs_matrix) =c("AF", "other", "AFother")
 
-write.table(relprobs_matrix,"4_presentation_graphs/relprobs_matrix.csv", sep=",", quote=F, row.names=F)
+write.table(relprobs_matrix,"3_graphs/relprobs_matrix.csv", sep=",", quote=F, row.names=F)
 
 ################### plotting phylogenetic reconstruction and traits #############
 
@@ -187,8 +187,13 @@ names(trait) = center_flower_df$species
 range(trait)
 
 tiff("3_graphs/dec_mcc_ranges_3.tiff", units="in", width=3, height=6, res=600)
-  plotTree(tree=tr,fsize=0.75, ftype="i")
-  tiplabels(pie=tip_states_probs, piecol=state_cols, cex=0.75)
+  plotTree(tree=tr,
+           type="fan",
+           fsize=0.75, 
+           ftype="i")
+  tiplabels(pie=tip_states_probs, 
+            piecol=state_cols, 
+            cex=0.75)
   nodelabels(node=(1+n_tips):(n_tips+n_inner_nodes), 
              pie= inner_node_probs, 
              piecol=state_cols, 
